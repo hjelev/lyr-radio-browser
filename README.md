@@ -9,8 +9,10 @@ Browse and play internet radio stations from the community-driven
 (`api.radio-browser.info`) directly inside
 [Lyrion Music Server](https://lyrion.org/) (formerly Logitech Media Server / LMS).
 
+Gain access to 58k+ stations worldwide, with search and browsing by 11k tags/genres and 240+ countries. Each station line shows bitrate, codec and country, plus favicons as artwork.
+
 The plugin registers itself under the native **Radio** menu and offers Search,
-Top Stations, By Tag/Genre, and By Country browsing — with bitrate, codec, and
+Top Stations, By Tag/Genre and By Country browsing — with bitrate, codec and
 country shown on each station line.
 
 ---
@@ -51,7 +53,7 @@ Install straight from the LMS Plugins screen and get future updates automaticall
    ```
 
 3. Click **Apply**. LMS reloads the plugin list.
-4. Find **Radio Browser** in the plugin list, tick its checkbox, and click
+4. Find **Radio Browser** in the plugin list, tick its checkbox and click
    **Apply** again.
 5. **Restart Lyrion Music Server** when prompted.
 6. Open the web UI → **Radio**. You should see **Radio Browser** listed.
@@ -71,7 +73,7 @@ Install straight from the LMS Plugins screen and get future updates automaticall
    - **macOS:** `~/Library/Application Support/Squeezebox/Plugins/`
    - **Windows:** `C:\ProgramData\Squeezebox\Plugins\`
 3. Extract so the folder lands as `Plugins/RadioBrowser/` (containing
-   `Plugin.pm`, `install.xml`, and `strings.txt`).
+   `Plugin.pm`, `install.xml` and `strings.txt`).
 4. **Restart Lyrion Music Server.**
 5. Open the web UI → **Radio**. You should see **Radio Browser** listed.
 
@@ -103,7 +105,7 @@ The plugin follows the [API usage guidelines](https://api.radio-browser.info/)
 strictly:
 
 1. **No hardcoded mirror.** At startup it performs a DNS round-robin lookup on
-   `all.api.radio-browser.info`, picks a server at random, and reverse-resolves
+   `all.api.radio-browser.info`, picks a server at random and reverse-resolves
    it to a valid hostname for TLS. If `Net::DNS` is unavailable it falls back to
    `https://all.api.radio-browser.info`.
 2. **Descriptive User-Agent.** Every request sends
@@ -133,7 +135,7 @@ The plugin appears under the **Radio** menu because `Plugin.pm` calls
 
 `Plugin.pm` is built on `Slim::Plugin::OPMLBased`, so LMS renders the menu
 hierarchy natively. All HTTP is non-blocking via
-`Slim::Networking::SimpleAsyncHTTP`, and JSON is decoded with `JSON::XS` inside
+`Slim::Networking::SimpleAsyncHTTP` and JSON is decoded with `JSON::XS` inside
 `eval` blocks for robust error handling. Failed requests degrade gracefully to a
 single "Unable to load" item rather than hanging the UI.
 
@@ -186,7 +188,7 @@ The workflow then:
 - syncs the version into `RadioBrowser/install.xml`,
 - builds `RadioBrowser-<version>.zip` via [`build.sh`](build.sh),
 - creates a GitHub Release tagged `v<version>` with the zip attached,
-- rewrites `repo.xml` with the release URL and the zip's **SHA1**, and commits
+- rewrites `repo.xml` with the release URL and the zip's **SHA1** and commits
   it back to `master`.
 
 Because the install URL points at `repo.xml` on `master`, LMS picks up the new
