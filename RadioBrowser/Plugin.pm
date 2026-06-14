@@ -77,6 +77,7 @@ sub initPlugin {
 		countryOverride => '',
 		maxResults      => DEFAULT_MAX_RESULTS,
 		cacheTTL        => DEFAULT_CACHE_TTL_MIN,
+		hideBroken      => 1,
 	});
 
 	# Keep the numeric prefs sane: positive integers within practical bounds.
@@ -284,7 +285,7 @@ sub searchStations {
 		unless length $query;
 
 	my $path = '/json/stations/byname/' . _uri( $query )
-		. '?limit=' . _maxResults() . '&hidebroken=true&order=votes&reverse=true';
+		. '?limit=' . _maxResults() . '&order=votes&reverse=true' . _brokenSuffix();
 
 	_stationsRequest( $client, $cb, $path );
 }
@@ -297,7 +298,8 @@ sub topStations {
 	my ( $client, $cb, $args, $pt ) = @_;
 
 	my $order = ( $pt && $pt->{order} ) || 'topvote';
-	my $path  = "/json/stations/$order/" . _maxResults() . '?hidebroken=true';
+	my $path  = "/json/stations/$order/" . _maxResults();
+	$path .= '?hidebroken=true' if _hideBroken();
 
 	_stationsRequest( $client, $cb, $path );
 }
@@ -314,7 +316,7 @@ sub listTags {
 
 	# Limit to popular tags to keep the list usable on a remote/IR UI.
 	_apiGet(
-		'/json/tags?order=stationcount&reverse=true&limit=200&hidebroken=true',
+		'/json/tags?order=stationcount&reverse=true&limit=200' . _brokenSuffix(),
 		sub {
 			my $tags = shift;
 			$cache->set( 'radiobrowser_tags', $tags, LIST_TTL );
@@ -347,7 +349,7 @@ sub stationsByTag {
 
 	my $tag  = ( $pt && $pt->{tag} ) || '';
 	my $path = '/json/stations/bytagexact/' . _uri( $tag )
-		. '?limit=' . _maxResults() . '&hidebroken=true&order=votes&reverse=true';
+		. '?limit=' . _maxResults() . '&order=votes&reverse=true' . _brokenSuffix();
 
 	_stationsRequest( $client, $cb, $path );
 }
@@ -363,7 +365,7 @@ sub listCountries {
 	return $cb->( { items => _countryItems( $client, $cached ) } ) if $cached;
 
 	_apiGet(
-		'/json/countries?order=name&hidebroken=true',
+		'/json/countries?order=name' . _brokenSuffix(),
 		sub {
 			my $countries = shift;
 			$cache->set( 'radiobrowser_countries', $countries, LIST_TTL );
@@ -398,7 +400,7 @@ sub stationsByCountry {
 	# Order defaults to votes; callers can request 'clickcount' for "most played".
 	my $order = ( $pt && $pt->{order} ) || 'votes';
 	my $path = '/json/stations/bycountrycodeexact/' . _uri( $code )
-		. '?limit=' . _maxResults() . '&hidebroken=true&order=' . _uri( $order ) . '&reverse=true';
+		. '?limit=' . _maxResults() . '&order=' . _uri( $order ) . '&reverse=true' . _brokenSuffix();
 
 	_stationsRequest( $client, $cb, $path );
 }
@@ -454,7 +456,7 @@ sub _stationsToOpml {
 
 	for my $s ( @{ $stations || [] } ) {
 		next unless $s->{stationuuid} && $s->{name};
-		next if defined $s->{lastcheckok} && $s->{lastcheckok} == 0;    # skip broken
+		next if _hideBroken() && defined $s->{lastcheckok} && $s->{lastcheckok} == 0;    # skip broken
 
 		my @meta;
 		push @meta, $s->{bitrate} . 'k' if $s->{bitrate};
@@ -520,6 +522,20 @@ sub _uri {
 sub _maxResults {
 	my $n = $prefs->get('maxResults');
 	return ( $n && $n =~ /^\d+$/ && $n > 0 ) ? $n : DEFAULT_MAX_RESULTS;
+}
+
+# Whether to hide stations that failed Radio Browser's last reachability check.
+# Defaults to on so broken streams stay out of the listings unless the user opts
+# in to showing them via the settings page.
+sub _hideBroken {
+	my $v = $prefs->get('hideBroken');
+	return defined $v ? $v : 1;
+}
+
+# Query fragment appended to an existing '?...'-style query string to ask the API
+# to omit broken stations. Empty when the user has chosen to show them.
+sub _brokenSuffix {
+	return _hideBroken() ? '&hidebroken=true' : '';
 }
 
 # Station-result cache lifetime in seconds (pref stored in minutes).

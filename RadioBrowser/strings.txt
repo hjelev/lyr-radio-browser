@@ -56,3 +56,9 @@ PLUGIN_RADIOBROWSER_SETTINGS_CACHETTL
 
 PLUGIN_RADIOBROWSER_SETTINGS_CACHETTL_DESC
 	EN	How long station lists are cached before being refetched from the Radio Browser API, in minutes. Higher values reduce API calls but make vote/play counts update less often. Default: 60.
+
+PLUGIN_RADIOBROWSER_SETTINGS_HIDEBROKEN
+	EN	Hide broken stations
+
+PLUGIN_RADIOBROWSER_SETTINGS_HIDEBROKEN_DESC
+	EN	Hide stations that failed Radio Browser's most recent reachability check. Uncheck to show all stations, including unverified or currently-broken ones. Enabled by default.
