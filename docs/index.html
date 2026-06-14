@@ -91,9 +91,10 @@
   .gh-link:hover { border-color: var(--accent); color: var(--accent); text-decoration: none; }
   .gh-link svg { flex: none; }
   @media (max-width: 640px) {
-    .header-inner { flex-direction: column; text-align: center; gap: 1.25rem; }
-    .header-text > p { margin: 0 auto; }
-    .header-meta { justify-content: center; }
+    .header-inner { gap: 1rem; align-items:  flex-start; }
+    header .logo { width: 64px; height: 64px; flex: none; }
+    .header-text h1 { font-size: 1.3rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .header-meta { justify-content: flex-start; }
   }
   .wrap { max-width: 56rem; margin: 0 auto; padding: 2rem 1.5rem 4rem; }
   nav.toc {
@@ -335,7 +336,7 @@
       <li>Click-tracking playback via <code>/m3u/url/&lt;uuid&gt;</code>.</li>
       <li>24-hour caching of tag/country lists; robust JSON and HTTP error handling.</li>
     </ul>
-    <p>Full history in <a href="../CHANGELOG.md">CHANGELOG.md</a>.</p>
+    <p>Full history in <a target="_blank" href="https://raw.githubusercontent.com/hjelev/lyr-radio-browser/refs/heads/master/CHANGELOG.md">CHANGELOG.md</a>.</p>
   </section>
 
 </div>
