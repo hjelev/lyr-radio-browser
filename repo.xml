@@ -12,7 +12,7 @@
 			<category>radio</category>
 			<link>https://masoko.net/lyr-radio-browser/</link>
 			<url>https://github.com/hjelev/lyr-radio-browser/releases/download/v0.2.0/RadioBrowser-0.2.0.zip</url>
-			<sha>79e608e7f2b8451e150eec6d47b2421548a03c18</sha>
+			<sha>a168250eba9a99d4d05c1c6fce88dc6115ce40de</sha>
 		</plugin>
 	</plugins>
 </extensions>
