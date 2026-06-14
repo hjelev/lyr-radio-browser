@@ -15,6 +15,9 @@ PLUGIN_RADIOBROWSER_SEARCH
 PLUGIN_RADIOBROWSER_SEARCH_PROMPT
 	EN	Search for a station by name
 
+PLUGIN_RADIOBROWSER_LOCAL
+	EN	Local Stations
+
 PLUGIN_RADIOBROWSER_TOP
 	EN	Top Stations
 
@@ -35,3 +38,9 @@ PLUGIN_RADIOBROWSER_ERROR
 
 PLUGIN_RADIOBROWSER_NONE
 	EN	No stations found
+
+PLUGIN_RADIOBROWSER_SETTINGS_COUNTRY
+	EN	Country override
+
+PLUGIN_RADIOBROWSER_SETTINGS_COUNTRY_DESC
+	EN	Two-letter country code (ISO 3166-1 alpha-2, e.g. US, DE, BG) used for the Local Stations menu. Leave empty to auto-detect from your server's location.

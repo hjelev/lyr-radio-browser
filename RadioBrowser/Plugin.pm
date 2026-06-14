@@ -25,6 +25,7 @@ use Slim::Networking::SimpleAsyncHTTP;
 use Slim::Utils::Log;
 use Slim::Utils::Strings qw(string cstring);
 use Slim::Utils::Cache;
+use Slim::Utils::Prefs;
 
 # JSON decoder. LMS bundles JSON::XS; we keep a single entry point so all
 # decoding is wrapped in eval for robust error handling.
@@ -34,7 +35,16 @@ use constant USER_AGENT  => 'LyrionRadioBrowserPlugin/1.0';
 use constant DNS_NAME    => 'all.api.radio-browser.info';
 use constant FALLBACK_URL => 'https://all.api.radio-browser.info';
 use constant LIST_TTL    => 86400;    # cache tags/countries for 1 day
+use constant GEO_TTL     => 604800;   # cache detected country for 7 days
 use constant RESULT_LIMIT => 100;     # max stations per result list
+
+# IP-geolocation providers, tried in order until one yields a 2-letter country
+# code. LMS has no built-in country pref, so we infer it from the server's
+# public IP. Each entry maps the provider's JSON fields to code/name.
+use constant GEO_PROVIDERS => (
+	{ url => 'https://ipapi.co/json/', code => 'country_code', name => 'country_name' },
+	{ url => 'https://ipwho.is/',      code => 'country_code', name => 'country'      },
+);
 
 # Logger category - configurable under Settings > Advanced > Logging.
 my $log = Slim::Utils::Log->addLogCategory({
@@ -42,6 +52,9 @@ my $log = Slim::Utils::Log->addLogCategory({
 	defaultLevel => 'ERROR',
 	description  => 'PLUGIN_RADIOBROWSER',
 });
+
+# Plugin preferences (manual country override; blank = auto-detect).
+my $prefs = preferences('plugin.radiobrowser');
 
 my $cache;
 
@@ -57,9 +70,20 @@ sub initPlugin {
 
 	$cache = Slim::Utils::Cache->new();
 
+	$prefs->init({ countryOverride => '' });
+
 	# Pick an API mirror via DNS round-robin (one-time, at startup).
 	$BASE_URL = _resolveBaseUrl();
 	$log->info("Radio Browser using base URL: $BASE_URL");
+
+	# Web settings page for the manual country override (web UI only).
+	if ( main::WEBUI ) {
+		require Plugins::RadioBrowser::Settings;
+		Plugins::RadioBrowser::Settings->new;
+	}
+
+	# Auto-detect the listener's country in the background (unless overridden).
+	_maybeDetectCountry();
 
 	$class->SUPER::initPlugin(
 		feed   => \&handleFeed,
@@ -162,43 +186,77 @@ sub _errorItems {
 sub handleFeed {
 	my ( $client, $cb, $args ) = @_;
 
-	$cb->({
-		items => [
+	# Resolve the listener's country (manual override or auto-detected). If it
+	# isn't known yet, trigger detection so a later menu open can show it.
+	my ( $code, $name ) = _activeCountry();
+	_maybeDetectCountry() unless $code;
+
+	# Top Stations: the global lists, plus country-specific ones when known.
+	my @top = (
+		{
+			name => cstring( $client, 'PLUGIN_RADIOBROWSER_TOP_VOTED' ),
+			type => 'link',
+			url  => \&topStations,
+			passthrough => [ { order => 'topvote' } ],
+		},
+		{
+			name => cstring( $client, 'PLUGIN_RADIOBROWSER_TOP_CLICKED' ),
+			type => 'link',
+			url  => \&topStations,
+			passthrough => [ { order => 'topclick' } ],
+		},
+	);
+
+	if ( $code ) {
+		push @top,
 			{
-				name  => cstring( $client, 'PLUGIN_RADIOBROWSER_SEARCH' ),
-				type  => 'search',
-				url   => \&searchStations,
+				name => cstring( $client, 'PLUGIN_RADIOBROWSER_TOP_VOTED' ) . " \x{00B7} $name",
+				type => 'link',
+				url  => \&stationsByCountry,
+				passthrough => [ { code => $code, order => 'votes' } ],
 			},
 			{
-				name  => cstring( $client, 'PLUGIN_RADIOBROWSER_TOP' ),
-				type  => 'link',
-				items => [
-					{
-						name => cstring( $client, 'PLUGIN_RADIOBROWSER_TOP_VOTED' ),
-						type => 'link',
-						url  => \&topStations,
-						passthrough => [ { order => 'topvote' } ],
-					},
-					{
-						name => cstring( $client, 'PLUGIN_RADIOBROWSER_TOP_CLICKED' ),
-						type => 'link',
-						url  => \&topStations,
-						passthrough => [ { order => 'topclick' } ],
-					},
-				],
-			},
-			{
-				name  => cstring( $client, 'PLUGIN_RADIOBROWSER_BY_TAG' ),
-				type  => 'link',
-				url   => \&listTags,
-			},
-			{
-				name  => cstring( $client, 'PLUGIN_RADIOBROWSER_BY_COUNTRY' ),
-				type  => 'link',
-				url   => \&listCountries,
-			},
-		],
-	});
+				name => cstring( $client, 'PLUGIN_RADIOBROWSER_TOP_CLICKED' ) . " \x{00B7} $name",
+				type => 'link',
+				url  => \&stationsByCountry,
+				passthrough => [ { code => $code, order => 'clickcount' } ],
+			};
+	}
+
+	my @items = (
+		{
+			name  => cstring( $client, 'PLUGIN_RADIOBROWSER_SEARCH' ),
+			type  => 'search',
+			url   => \&searchStations,
+		},
+		{
+			name  => cstring( $client, 'PLUGIN_RADIOBROWSER_TOP' ),
+			type  => 'link',
+			items => \@top,
+		},
+		{
+			name  => cstring( $client, 'PLUGIN_RADIOBROWSER_BY_TAG' ),
+			type  => 'link',
+			url   => \&listTags,
+		},
+		{
+			name  => cstring( $client, 'PLUGIN_RADIOBROWSER_BY_COUNTRY' ),
+			type  => 'link',
+			url   => \&listCountries,
+		},
+	);
+
+	# Surface local stations prominently as the very first entry.
+	if ( $code ) {
+		unshift @items, {
+			name  => cstring( $client, 'PLUGIN_RADIOBROWSER_LOCAL' ) . " \x{00B7} $name",
+			type  => 'link',
+			url   => \&stationsByCountry,
+			passthrough => [ { code => $code, order => 'votes' } ],
+		};
+	}
+
+	$cb->({ items => \@items });
 }
 
 # ----------------------------------------------------------------------------
@@ -337,9 +395,11 @@ sub _countryItems {
 sub stationsByCountry {
 	my ( $client, $cb, $args, $pt ) = @_;
 
-	my $code = ( $pt && $pt->{code} ) || '';
+	my $code  = ( $pt && $pt->{code} )  || '';
+	# Order defaults to votes; callers can request 'clickcount' for "most played".
+	my $order = ( $pt && $pt->{order} ) || 'votes';
 	my $path = '/json/stations/bycountrycodeexact/' . _uri( $code )
-		. '?limit=' . RESULT_LIMIT . '&hidebroken=true&order=votes&reverse=true';
+		. '?limit=' . RESULT_LIMIT . '&hidebroken=true&order=' . _uri( $order ) . '&reverse=true';
 
 	_apiGet(
 		$path,
@@ -431,6 +491,88 @@ sub _uri {
 	$s = '' unless defined $s;
 	$s =~ s/([^A-Za-z0-9\-_.~])/sprintf('%%%02X', ord($1))/ge;
 	return $s;
+}
+
+# ----------------------------------------------------------------------------
+# Country detection / resolution
+# ----------------------------------------------------------------------------
+
+# Return the active ( $code, $name ) for "local" content: the manual override
+# pref if set, otherwise the auto-detected country. Empty list when unknown.
+sub _activeCountry {
+	my $override = $prefs->get('countryOverride');
+	if ( defined $override && $override =~ /^\s*([A-Za-z]{2})\s*$/ ) {
+		my $code = uc $1;
+		return ( $code, _countryName($code) );
+	}
+
+	my $geo = $cache->get('radiobrowser_geo');
+	if ( $geo && $geo->{code} ) {
+		return ( $geo->{code}, $geo->{name} || _countryName( $geo->{code} ) );
+	}
+
+	return ();
+}
+
+# Map an ISO 3166-1 alpha-2 code to a display name using the cached countries
+# list (populated by listCountries); fall back to the bare code.
+sub _countryName {
+	my $code = uc( shift || '' );
+	return $code unless $code;
+
+	my $countries = $cache->get('radiobrowser_countries');
+	for my $c ( @{ $countries || [] } ) {
+		return $c->{name} if $c->{name} && uc( $c->{iso_3166_1} || '' ) eq $code;
+	}
+	return $code;
+}
+
+# Kick off async geo-IP detection unless an override is set or we already have a
+# cached result. Fire-and-forget: results land in the cache for later menus.
+sub _maybeDetectCountry {
+	return if $prefs->get('countryOverride');      # override wins; no lookup
+	return if $cache->get('radiobrowser_geo');     # already known
+
+	# Try each geo-IP provider in order until one returns a 2-letter country
+	# code, then cache { code, name }. All failures are logged and swallowed so
+	# the menu never depends on this succeeding.
+	my @providers = GEO_PROVIDERS;
+	_tryGeoProvider( \@providers );
+}
+
+sub _tryGeoProvider {
+	my ( $providers ) = @_;
+
+	my $p = shift @$providers;
+	unless ( $p ) {
+		$log->warn('country auto-detect failed: all geo-IP providers exhausted');
+		return;
+	}
+
+	Slim::Networking::SimpleAsyncHTTP->new(
+		sub {
+			my $http = shift;
+			my $data = eval { JSON::XS::decode_json( $http->content ) };
+
+			my $code = $data && $data->{ $p->{code} };
+			if ( $code && $code =~ /^[A-Za-z]{2}$/ ) {
+				$code = uc $code;
+				my $name = ( $data->{ $p->{name} } ) || _countryName($code);
+				$cache->set( 'radiobrowser_geo', { code => $code, name => $name }, GEO_TTL );
+				$log->info("country auto-detected: $code ($name) via $p->{url}");
+				return;
+			}
+
+			$log->debug("geo-IP $p->{url} returned no usable country; trying next");
+			_tryGeoProvider($providers);
+		},
+		sub {
+			my ( $http, $error ) = @_;
+			$log->debug("geo-IP $p->{url} failed: " . ( $error || 'unknown' ) . '; trying next');
+			_tryGeoProvider($providers);
+		},
+		{ timeout => 10 },
+	)->get( $p->{url}, 'User-Agent' => USER_AGENT );
 }
 
 1;
