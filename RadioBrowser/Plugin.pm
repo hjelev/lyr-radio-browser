@@ -94,8 +94,14 @@ sub initPlugin {
 
 	# Register the radiobrowser:// protocol handler so each play is captured for
 	# the Recently Played list (the OPML item url alone gives us no play callback).
-	require Plugins::RadioBrowser::ProtocolHandler;
-	Slim::Player::ProtocolHandlers->registerHandler('radiobrowser', 'Plugins::RadioBrowser::ProtocolHandler');
+	# Guarded so a load/registration failure can never abort initPlugin (which
+	# would take the settings page and the whole menu down with it).
+	eval {
+		require Slim::Player::ProtocolHandlers;
+		require Plugins::RadioBrowser::ProtocolHandler;
+		Slim::Player::ProtocolHandlers->registerHandler('radiobrowser', 'Plugins::RadioBrowser::ProtocolHandler');
+	};
+	$log->error("Radio Browser: could not register protocol handler: $@") if $@;
 
 	# Pick an API mirror via DNS round-robin (one-time, at startup).
 	$BASE_URL = _resolveBaseUrl();
