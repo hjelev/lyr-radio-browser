@@ -8,7 +8,7 @@
 	-->
 	<name>RadioBrowser</name>
 	<title lang="EN">Radio Browser</title>
-	<version>0.1.4</version>
+	<version>0.1.5</version>
 	<creator>hjelev</creator>
 	<email>jeleff@gmail.com</email>
 	<module>Plugins::RadioBrowser::Plugin</module>
