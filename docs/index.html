@@ -1,0 +1,387 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Lyrion Radio Browser Plugin</title>
+<link rel="icon" type="image/png" href="images/logo.png">
+<link rel="apple-touch-icon" href="images/logo.png">
+<style>
+  /* Dark theme (default). */
+  :root {
+    color-scheme: light dark;
+    --bg: #0f1115;
+    --panel: #171a21;
+    --panel-2: #1d2129;
+    --text: #e6e8ec;
+    --muted: #9aa3b2;
+    --accent: #4cc2ff;
+    --accent-2: #6ee7b7;
+    --border: #2a2f3a;
+    --code-bg: #11141a;
+    --header-grad: linear-gradient(135deg, #1b2735 0%, #0f1115 70%);
+  }
+
+  /* Light theme - applied automatically when the OS prefers light. */
+  @media (prefers-color-scheme: light) {
+    :root {
+      --bg: #f6f7f9;
+      --panel: #ffffff;
+      --panel-2: #eef1f5;
+      --text: #1c2128;
+      --muted: #57606a;
+      --accent: #0969da;
+      --accent-2: #1a7f5a;
+      --border: #d6dbe1;
+      --code-bg: #f0f2f5;
+      --header-grad: linear-gradient(135deg, #dce6f2 0%, #f6f7f9 70%);
+    }
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    line-height: 1.65;
+    color: var(--text);
+    background: var(--bg);
+  }
+  a { color: var(--accent); text-decoration: none; }
+  a:hover { text-decoration: underline; }
+  header {
+    background: var(--header-grad);
+    border-bottom: 1px solid var(--border);
+    padding: 3.5rem 1.5rem 3rem;
+  }
+  .header-inner {
+    max-width: 56rem; margin: 0 auto;
+    display: flex; align-items: flex-start; gap: 1.75rem;
+  }
+  header .logo {
+    flex: none; width: 96px; height: 96px; border-radius: 20px;
+    background: #e5e7eb; padding: 8px; box-sizing: border-box;
+  }
+  .header-text { flex: 1; min-width: 0; }
+  .header-text h1 {
+    margin: 0 0 .35rem; font-size: 2.1rem; line-height: 1.15;
+    letter-spacing: -.02em;
+  }
+  .header-text > p { margin: 0; max-width: 38rem; color: var(--muted); }
+  .header-meta {
+    display: flex; flex-wrap: wrap; align-items: center; gap: .75rem;
+    margin-top: 1.25rem;
+  }
+  .badge {
+    display: inline-flex; align-items: center; gap: .4rem;
+    padding: .3rem .8rem;
+    background: var(--panel-2); border: 1px solid var(--border);
+    border-radius: 999px; font-size: .8rem; color: var(--accent-2);
+    font-weight: 600;
+  }
+  .badge::before {
+    content: ""; width: .5rem; height: .5rem; border-radius: 50%;
+    background: var(--accent-2); box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent-2) 25%, transparent);
+  }
+  .gh-link {
+    display: inline-flex; align-items: center; gap: .5rem;
+    padding: .45rem 1rem;
+    background: var(--panel-2); border: 1px solid var(--border);
+    border-radius: 8px; color: var(--text); font-weight: 600; font-size: .9rem;
+    transition: border-color .15s, color .15s;
+  }
+  .gh-link:hover { border-color: var(--accent); color: var(--accent); text-decoration: none; }
+  .gh-link svg { flex: none; }
+  @media (max-width: 640px) {
+    .header-inner { flex-direction: column; text-align: center; gap: 1.25rem; }
+    .header-text > p { margin: 0 auto; }
+    .header-meta { justify-content: center; }
+  }
+  .wrap { max-width: 56rem; margin: 0 auto; padding: 2rem 1.5rem 4rem; }
+  nav.toc {
+    background: var(--panel); border: 1px solid var(--border);
+    border-radius: 10px; padding: 1rem 1.25rem; margin-bottom: 2.5rem;
+  }
+  nav.toc strong { display: block; margin-bottom: .5rem; color: var(--muted); font-size: .85rem; text-transform: uppercase; letter-spacing: .05em; }
+  nav.toc ul { margin: 0; padding-left: 1.1rem; columns: 2; }
+  section { margin-bottom: 2.5rem; }
+  h2 { font-size: 1.4rem; border-bottom: 1px solid var(--border); padding-bottom: .35rem; margin-top: 0; }
+  h3 { font-size: 1.05rem; color: var(--accent-2); margin-bottom: .3rem; }
+  code {
+    font-family: "SF Mono", "Fira Code", Consolas, monospace;
+    background: var(--code-bg); border: 1px solid var(--border);
+    padding: .1rem .35rem; border-radius: 4px; font-size: .9em;
+  }
+  pre {
+    background: var(--code-bg); border: 1px solid var(--border);
+    border-radius: 8px; padding: 1rem; overflow-x: auto;
+  }
+  pre code { background: none; border: none; padding: 0; }
+  .copybox {
+    display: flex; align-items: stretch; gap: .5rem; margin: 1rem 0;
+  }
+  .copybox code {
+    flex: 1; min-width: 0; background: var(--code-bg); border: 1px solid var(--border);
+    border-radius: 8px; padding: .65rem .8rem; overflow-x: auto; white-space: nowrap;
+  }
+  .copy-btn {
+    flex: none; cursor: pointer; padding: 0 1rem;
+    background: var(--panel-2); color: var(--text);
+    border: 1px solid var(--border); border-radius: 8px;
+    font-size: .85rem; font-weight: 600; font-family: inherit;
+    transition: border-color .15s, color .15s;
+  }
+  .copy-btn:hover { border-color: var(--accent); }
+  .copy-btn.copied { color: var(--accent-2); border-color: var(--accent-2); }
+  table { width: 100%; border-collapse: collapse; margin: 1rem 0; }
+  th, td { text-align: left; padding: .55rem .7rem; border-bottom: 1px solid var(--border); vertical-align: top; }
+  th { color: var(--muted); font-size: .85rem; text-transform: uppercase; letter-spacing: .03em; }
+  tr:last-child td { border-bottom: none; }
+  .cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(13rem, 1fr)); gap: 1rem; }
+  .card { background: var(--panel); border: 1px solid var(--border); border-radius: 10px; padding: 1rem 1.1rem; }
+  .card h3 { margin-top: 0; }
+  .card p { margin: 0; color: var(--muted); font-size: .92rem; }
+  .note {
+    background: var(--panel-2); border-left: 3px solid var(--accent);
+    border-radius: 0 8px 8px 0; padding: .75rem 1rem; color: var(--muted);
+  }
+  ol li, ul li { margin: .25rem 0; }
+  footer { border-top: 1px solid var(--border); padding: 1.5rem; text-align: center; color: var(--muted); font-size: .9rem; }
+</style>
+</head>
+<body>
+<header>
+  <div class="header-inner">
+    <img class="logo" src="images/logo.png" alt="Lyrion Radio Browser logo" width="96" height="96">
+    <div class="header-text">
+      <h1>Lyrion Radio Browser Plugin</h1>
+      <p>Browse and play internet radio from the community-driven
+         <a href="https://www.radio-browser.info/">Radio Browser</a> directory,
+         directly inside Lyrion Music Server.</p>
+      <div class="header-meta">
+        <span class="badge">v<span class="version">0.2.2</span> &middot; LMS 8.0+</span>
+        <a class="gh-link" href="https://github.com/hjelev/lyr-radio-browser">
+          <svg viewBox="0 0 16 16" width="18" height="18" aria-hidden="true" fill="currentColor">
+            <path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0 0 16 8c0-4.42-3.58-8-8-8z"/>
+          </svg>
+          View on GitHub
+        </a>
+      </div>
+    </div>
+  </div>
+</header>
+
+<div class="wrap">
+
+  <nav class="toc">
+    <strong>Contents</strong>
+    <ul>
+      <li><a href="#features">Features</a></li>
+      <li><a href="#requirements">Requirements</a></li>
+      <li><a href="#install">Installation</a></li>
+      <li><a href="#usage">Usage</a></li>
+      <li><a href="#api">API compliance</a></li>
+      <li><a href="#architecture">Architecture</a></li>
+      <li><a href="#troubleshooting">Troubleshooting</a></li>
+      <li><a href="#changelog">Changelog</a></li>
+    </ul>
+  </nav>
+
+  <section id="features">
+    <h2>Features</h2>
+    <div class="cards">
+      <div class="card"><h3>Search</h3><p>Find stations by name, ordered by community votes.</p></div>
+      <div class="card"><h3>Top Stations</h3><p>Most Voted and Most Played lists (top 100).</p></div>
+      <div class="card"><h3>By Tag / Genre</h3><p>Drill into the 200 most popular tags.</p></div>
+      <div class="card"><h3>By Country</h3><p>Browse every country with stations.</p></div>
+      <div class="card"><h3>Inline metadata</h3><p>Bitrate &middot; codec &middot; country shown on each line, with favicons.</p></div>
+      <div class="card"><h3>Community-friendly</h3><p>Honours every Radio Browser API guideline.</p></div>
+    </div>
+  </section>
+
+  <section id="requirements">
+    <h2>Requirements</h2>
+    <ul>
+      <li>Lyrion Music Server <strong>8.0</strong> or newer.</li>
+      <li>Network access to <code>api.radio-browser.info</code>.</li>
+      <li><code>Net::DNS</code> is used for mirror load-balancing when present; it
+          is <strong>not</strong> a hard dependency &mdash; the plugin falls back
+          automatically if it is missing.</li>
+    </ul>
+  </section>
+
+  <section id="install">
+    <h2>Installation</h2>
+
+    <h3>Recommended: add the repository</h3>
+    <p>Install from the LMS Plugins screen and get future updates automatically.</p>
+    <ol>
+      <li>Open the LMS web UI &rarr; <strong>Settings &rarr; Plugins</strong>.</li>
+      <li>Scroll to <strong>Additional Repositories</strong> and paste this URL
+          into an empty field:
+        <div class="copybox">
+          <code id="repo-url">https://raw.githubusercontent.com/hjelev/lyr-radio-browser/refs/heads/master/repo.xml</code>
+          <button type="button" class="copy-btn" data-copy-target="repo-url" aria-label="Copy repository URL">Copy</button>
+        </div>
+      </li>
+      <li>Click <strong>Apply</strong>; LMS reloads the plugin list.</li>
+      <li>Tick <strong>Radio Browser</strong> in the list and click <strong>Apply</strong> again.</li>
+      <li><strong>Restart Lyrion Music Server</strong> when prompted.</li>
+      <li>Open the web UI &rarr; <strong>Radio</strong> &rarr; <strong>Radio Browser</strong>.</li>
+    </ol>
+    <p class="note">When a new version is published, LMS shows an update next to
+       the plugin &mdash; no manual download needed.</p>
+
+    <h3>Alternative: manual install</h3>
+    <ol>
+      <li>Download the latest <code>RadioBrowser-&lt;version&gt;.zip</code> from the
+          <a href="https://github.com/hjelev/lyr-radio-browser/releases">Releases page</a>.</li>
+      <li>Locate your LMS <strong>Plugins</strong> directory (see
+          <strong>Settings &rarr; Plugins</strong> for the exact path):
+        <ul>
+          <li><strong>Linux:</strong> <code>/var/lib/squeezeboxserver/Plugins/</code></li>
+          <li><strong>macOS:</strong> <code>~/Library/Application Support/Squeezebox/Plugins/</code></li>
+          <li><strong>Windows:</strong> <code>C:\ProgramData\Squeezebox\Plugins\</code></li>
+        </ul>
+      </li>
+      <li>Extract so the folder lands as <code>Plugins/RadioBrowser/</code>.</li>
+      <li><strong>Restart Lyrion Music Server.</strong></li>
+      <li>Open the web UI &rarr; <strong>Radio</strong> &rarr; <strong>Radio Browser</strong>.</li>
+    </ol>
+    <p class="note">The folder <strong>must</strong> be named <code>RadioBrowser</code>
+       so it matches the Perl package path <code>Plugins::RadioBrowser::Plugin</code>
+       declared in <code>install.xml</code>.</p>
+  </section>
+
+  <section id="usage">
+    <h2>Usage</h2>
+    <p>Go to <strong>Radio &rarr; Radio Browser</strong> on any player or the web UI,
+       then choose a browsing mode:</p>
+    <table>
+      <tr><th>Menu</th><th>What it does</th></tr>
+      <tr><td>Search Stations</td><td>Type a name; results ordered by votes.</td></tr>
+      <tr><td>Top Stations</td><td>Most Voted / Most Played, top 100.</td></tr>
+      <tr><td>By Tag / Genre</td><td>Top 200 tags, drilling into matching stations.</td></tr>
+      <tr><td>By Country</td><td>All countries; drill into stations by country code.</td></tr>
+    </table>
+    <p>Select a station to play it. Each play is routed through the Radio Browser
+       click-counter so popularity stats stay accurate.</p>
+  </section>
+
+  <section id="api">
+    <h2>How it respects the Radio Browser API</h2>
+    <ol>
+      <li><strong>No hardcoded mirror.</strong> A DNS round-robin lookup on
+          <code>all.api.radio-browser.info</code> picks a server at random and
+          reverse-resolves it for valid TLS; falls back to
+          <code>https://all.api.radio-browser.info</code> if needed.</li>
+      <li><strong>Descriptive User-Agent.</strong> Every request sends
+          <code>User-Agent: LyrionRadioBrowserPlugin/1.0</code>.</li>
+      <li><strong>UUIDs only.</strong> Stations are identified solely by
+          <code>stationuuid</code>.</li>
+      <li><strong>Click tracking.</strong> Each station plays via the
+          <code>/m3u/url/&lt;uuid&gt;</code> endpoint, which registers a click and
+          returns an M3U pointing at the live stream.</li>
+    </ol>
+    <p>Tag and country lists are cached for 24 hours to ease load on the directory.</p>
+  </section>
+
+  <section id="architecture">
+    <h2>Architecture</h2>
+    <pre><code>RadioBrowser/
+├── install.xml   # Plugin metadata read by LMS at startup
+├── Plugin.pm     # Core module (extends Slim::Plugin::OPMLBased)
+└── strings.txt   # Localized UI label tokens</code></pre>
+    <p><code>Plugin.pm</code> builds on <code>Slim::Plugin::OPMLBased</code> so LMS
+       renders the hierarchy natively. All HTTP is non-blocking via
+       <code>Slim::Networking::SimpleAsyncHTTP</code>, and JSON is decoded with
+       <code>JSON::XS</code> inside <code>eval</code> blocks. Failed requests
+       degrade gracefully to a single &ldquo;Unable to load&rdquo; item.</p>
+    <table>
+      <tr><th>Subroutine</th><th>Role</th></tr>
+      <tr><td><code>initPlugin</code></td><td>Resolves the mirror and registers under the Radio menu.</td></tr>
+      <tr><td><code>_resolveBaseUrl</code></td><td>DNS round-robin with graceful fallback.</td></tr>
+      <tr><td><code>_apiGet</code></td><td>Central async GET + safe JSON decode.</td></tr>
+      <tr><td><code>handleFeed</code></td><td>Builds the top-level menu.</td></tr>
+      <tr><td><code>searchStations</code></td><td>Name search.</td></tr>
+      <tr><td><code>topStations</code></td><td>Top voted / clicked.</td></tr>
+      <tr><td><code>listTags</code> / <code>stationsByTag</code></td><td>Tag list and drill-down.</td></tr>
+      <tr><td><code>listCountries</code> / <code>stationsByCountry</code></td><td>Country list and drill-down.</td></tr>
+      <tr><td><code>_stationsToOpml</code></td><td>Converts API stations into OPML audio items.</td></tr>
+      <tr><td><code>playStation</code></td><td>Click-tracking resolve-then-play.</td></tr>
+    </table>
+  </section>
+
+  <section id="troubleshooting">
+    <h2>Troubleshooting</h2>
+    <ul>
+      <li><strong>Plugin doesn't appear under Radio:</strong> confirm the folder is
+          named exactly <code>RadioBrowser</code> and that LMS was restarted.</li>
+      <li><strong>Menus show &ldquo;Unable to load&rdquo;:</strong> verify the
+          server can reach <code>api.radio-browser.info</code>; enable the
+          <code>plugin.radiobrowser</code> log category under
+          <strong>Settings &rarr; Advanced &rarr; Logging</strong>.</li>
+      <li><strong>A station won't play:</strong> the entry may be stale or
+          geo-blocked &mdash; try another. Broken entries are filtered out.</li>
+    </ul>
+  </section>
+
+  <section id="changelog">
+    <h2>Changelog</h2>
+    <h3>1.0.0 &mdash; 2026-06-14</h3>
+    <ul>
+      <li>Initial release.</li>
+      <li>Search, Top Stations (Most Voted / Most Played), By Tag/Genre, and By Country menus under the native Radio menu.</li>
+      <li>Inline station metadata (bitrate &middot; codec &middot; country) and favicons.</li>
+      <li>DNS round-robin mirror selection with graceful fallback; mandatory User-Agent.</li>
+      <li>Click-tracking playback via <code>/m3u/url/&lt;uuid&gt;</code>.</li>
+      <li>24-hour caching of tag/country lists; robust JSON and HTTP error handling.</li>
+    </ul>
+    <p>Full history in <a href="../CHANGELOG.md">CHANGELOG.md</a>.</p>
+  </section>
+
+</div>
+
+<footer>
+  <a href="https://github.com/hjelev/lyr-radio-browser">GitHub repository</a>
+  &middot; Station data provided by the volunteer-run
+  <a href="https://www.radio-browser.info/">Radio Browser</a> project.
+  &middot; Lyrion Radio Browser Plugin v<span class="version">0.2.2</span>
+</footer>
+
+<script>
+  document.querySelectorAll('.copy-btn').forEach(function (btn) {
+    btn.addEventListener('click', function () {
+      var el = document.getElementById(btn.dataset.copyTarget);
+      if (!el) return;
+      var text = el.textContent.trim();
+
+      var done = function () {
+        var original = btn.textContent;
+        btn.textContent = 'Copied!';
+        btn.classList.add('copied');
+        setTimeout(function () {
+          btn.textContent = original;
+          btn.classList.remove('copied');
+        }, 1500);
+      };
+
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(text).then(done).catch(fallback);
+      } else {
+        fallback();
+      }
+
+      function fallback() {
+        // Older browsers / non-secure contexts: select + execCommand.
+        var range = document.createRange();
+        range.selectNodeContents(el);
+        var sel = window.getSelection();
+        sel.removeAllRanges();
+        sel.addRange(range);
+        try { document.execCommand('copy'); done(); } catch (e) { /* no-op */ }
+        sel.removeAllRanges();
+      }
+    });
+  });
+</script>
+</body>
+</html>
