@@ -116,10 +116,14 @@ Tag and country lists are cached for 24 hours to reduce load on the directory.
 
 ```
 RadioBrowser/
-├── install.xml   # Plugin metadata read by LMS at startup
+├── install.xml   # Plugin metadata read by LMS at startup (menu=radios, icon)
 ├── Plugin.pm     # Core module (extends Slim::Plugin::OPMLBased)
-└── strings.txt   # Localized UI label tokens
+├── strings.txt   # Localized UI label tokens
+└── HTML/EN/plugins/RadioBrowser/html/images/icon.png   # Radio-menu icon
 ```
+
+The plugin appears under the **Radio** menu because `Plugin.pm` calls
+`initPlugin(menu => 'radios', ...)` and `install.xml` declares an `<icon>`.
 
 `Plugin.pm` is built on `Slim::Plugin::OPMLBased`, so LMS renders the menu
 hierarchy natively. All HTTP is non-blocking via

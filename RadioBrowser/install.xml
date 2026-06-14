@@ -13,6 +13,7 @@
 	<email>jeleff@gmail.com</email>
 	<module>Plugins::RadioBrowser::Plugin</module>
 	<desc lang="EN">Browse and play internet radio stations from the community-driven Radio Browser directory (api.radio-browser.info).</desc>
+	<icon>plugins/RadioBrowser/html/images/icon.png</icon>
 	<link>https://github.com/hjelev/lyr-radio-browser</link>
 
 	<!--

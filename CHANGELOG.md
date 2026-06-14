@@ -27,6 +27,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   graceful "Unable to load" item, and broken stations (`lastcheckok == 0`) are
   filtered out.
 - `strings.txt` with English UI labels (ready for translation).
+- Plugin icon shown in the Radio menu (`HTML/EN/plugins/RadioBrowser/html/images/icon.png`).
 - HTML documentation under `docs/`.
 
 [1.0.0]: https://github.com/jeleff/lyr-radio-browser/releases/tag/v1.0.0
