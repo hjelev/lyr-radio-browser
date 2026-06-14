@@ -63,6 +63,14 @@ jobs:
           echo "sha=$SHA" >> "$GITHUB_OUTPUT"
           echo "Built $ZIP (sha1 $SHA)"
 
+      - name: Ensure repo.xml exists
+        run: |
+          # repo.xml is gitignored, so seed it from the template on a fresh checkout.
+          if [ ! -f repo.xml ]; then
+            echo "repo.xml missing; copying from repo.xml.example"
+            cp repo.xml.example repo.xml
+          fi
+
       - name: Update repo.xml manifest
         run: |
           VERSION="${{ steps.ver.outputs.version }}"
