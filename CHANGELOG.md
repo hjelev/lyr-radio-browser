@@ -9,6 +9,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - README: plugin logo is now inline with the title and slightly smaller.
 
+## [v0.2.9] - 2026-06-15
+
+- Recently Played now renders as large artwork tiles instead of a list: the Clear action carries an icon so grid-capable skins keep the tile layout.
+
 ## [v0.2.6] - 2026-06-15
 
 - Added a **Recently Played** section that remembers the stations you actually play (most recent first, duplicates moved to the top) and persists across server restarts.

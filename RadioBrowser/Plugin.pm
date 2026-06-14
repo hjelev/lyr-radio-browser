@@ -610,11 +610,14 @@ sub recentStations {
 	my $items = _stationsToOpml( $client, $list );
 
 	# Offer a Clear action only when there is real history (not the NONE item).
+	# It carries an image so the grid-capable skins keep rendering large artwork
+	# tiles: they fall back to a plain list as soon as one item lacks artwork.
 	if ( @$list ) {
 		unshift @$items, {
-			name => cstring( $client, 'PLUGIN_RADIOBROWSER_CLEAR_RECENT' ),
-			type => 'link',
-			url  => sub {
+			name  => cstring( $client, 'PLUGIN_RADIOBROWSER_CLEAR_RECENT' ),
+			type  => 'link',
+			image => 'plugins/RadioBrowser/html/images/icon.png',
+			url   => sub {
 				my ( $c, $cb2 ) = @_;
 				$prefs->set( 'recent', [] );
 				recentStations( $c, $cb2 );
