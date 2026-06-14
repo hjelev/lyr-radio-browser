@@ -89,7 +89,7 @@ jobs:
         run: |
           git config user.name  "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add repo.xml RadioBrowser/install.xml
+          git add -f repo.xml RadioBrowser/install.xml
           if git diff --cached --quiet; then
             echo "No manifest changes to commit."
           else
