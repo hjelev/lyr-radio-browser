@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="docs/images/logo.png" alt="Lyrion Radio Browser logo" width="160">
+</p>
+
 # Lyrion Radio Browser Plugin
 
 Browse and play internet radio stations from the community-driven

@@ -380,15 +380,18 @@ sub _stationsToOpml {
 		my $line2 = join( " \x{00B7} ", @meta );    # space-middot-space separator
 
 		push @items, {
-			name    => $s->{name},
-			line1   => $s->{name},
-			line2   => $line2,
-			type    => 'audio',
+			name      => $s->{name},
+			line1     => $s->{name},
+			line2     => $line2,
+			type      => 'audio',
 			# Click-tracking playlist endpoint -> counts a click and yields the
 			# real stream. Plain string => LMS treats it as a playable track.
-			url     => $BASE_URL . '/m3u/url/' . _uri( $s->{stationuuid} ),
-			image   => $s->{favicon} || undef,
-			bitrate => $s->{bitrate} ? $s->{bitrate} * 1000 : undef,
+			# (A code reference here would make LMS render it as a folder.)
+			url       => $BASE_URL . '/m3u/url/' . _uri( $s->{stationuuid} ),
+			image     => $s->{favicon} || undef,
+			bitrate   => $s->{bitrate} ? $s->{bitrate} * 1000 : undef,
+			on_select => 'play',    # explicit play-on-select hint
+			playall   => 1,
 		};
 	}
 
