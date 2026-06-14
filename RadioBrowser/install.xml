@@ -14,7 +14,13 @@
 	<module>Plugins::RadioBrowser::Plugin</module>
 	<desc lang="EN">Browse and play internet radio stations from the community-driven Radio Browser directory (api.radio-browser.info).</desc>
 	<icon>plugins/RadioBrowser/html/images/icon.png</icon>
+	<!--
+		<link> drives the "More Info" link in the pre-install repository view
+		(via repo.xml). Once installed, LMS reads <homepageURL> instead, so we
+		set both to keep "More Info" visible before AND after installation.
+	-->
 	<link>https://masoko.net/lyr-radio-browser/</link>
+	<homepageURL>https://masoko.net/lyr-radio-browser/</homepageURL>
 	<!--
 		<optionsURL> makes LMS show a "Settings" link next to the plugin in the
 		Manage Plugins list. It must match Settings.pm's page() URL. Without it

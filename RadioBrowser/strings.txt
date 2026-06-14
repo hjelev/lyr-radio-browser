@@ -44,3 +44,15 @@ PLUGIN_RADIOBROWSER_SETTINGS_COUNTRY
 
 PLUGIN_RADIOBROWSER_SETTINGS_COUNTRY_DESC
 	EN	Two-letter country code (ISO 3166-1 alpha-2, e.g. US, DE, BG) used for the Local Stations menu. Leave empty to auto-detect from your server's location.
+
+PLUGIN_RADIOBROWSER_SETTINGS_MAXRESULTS
+	EN	Maximum stations per list
+
+PLUGIN_RADIOBROWSER_SETTINGS_MAXRESULTS_DESC
+	EN	Maximum number of stations fetched for each list (Search, Top Stations, By Tag, By Country). Higher values show more stations but use more memory. Default: 5000.
+
+PLUGIN_RADIOBROWSER_SETTINGS_CACHETTL
+	EN	Cache lifetime (minutes)
+
+PLUGIN_RADIOBROWSER_SETTINGS_CACHETTL_DESC
+	EN	How long station lists are cached before being refetched from the Radio Browser API, in minutes. Higher values reduce API calls but make vote/play counts update less often. Default: 60.

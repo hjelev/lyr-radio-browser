@@ -54,11 +54,12 @@ jobs:
 
       - name: Sync version into docs page
         run: |
-          # The docs landing page shows the version in a badge:
-          #   <span id="version">X.Y.Z</span>
-          sed -i -E "s|(<span id=\"version\">)[^<]*(</span>)|\1${{ steps.ver.outputs.version }}\2|" \
+          # The docs landing page shows the version in every:
+          #   <span class="version">X.Y.Z</span>
+          # (header badge + footer). Replace all occurrences.
+          sed -i -E "s|(<span class=\"version\">)[^<]*(</span>)|\1${{ steps.ver.outputs.version }}\2|g" \
             docs/index.html
-          grep -o '<span id="version">[^<]*</span>' docs/index.html
+          grep -o '<span class="version">[^<]*</span>' docs/index.html
 
       - name: Build plugin zip
         id: build
