@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="utf-8"?>
+<extension>
+	<!--
+		Plugin metadata read by Lyrion Music Server (LMS) at startup.
+		<name> is the unique plugin id and MUST match the folder name
+		(RadioBrowser) so repository-based installs map correctly.
+		<module> MUST match the Perl package in Plugin.pm.
+	-->
+	<name>RadioBrowser</name>
+	<title lang="EN">Radio Browser</title>
+	<version>1.0.0</version>
+	<creator>hjelev</creator>
+	<email>jeleff@gmail.com</email>
+	<module>Plugins::RadioBrowser::Plugin</module>
+	<desc lang="EN">Browse and play internet radio stations from the community-driven Radio Browser directory (api.radio-browser.info).</desc>
+	<link>https://github.com/hjelev/lyr-radio-browser</link>
+
+	<!--
+		Restrict to the LMS application. minVersion 8.0 is required because the
+		plugin relies on the modern OPMLBased menu integration under "Radio".
+	-->
+	<targetApplication>
+		<id>LogitechMediaServer</id>
+		<minVersion>8.0</minVersion>
+		<maxVersion>9.*</maxVersion>
+	</targetApplication>
+</extension>

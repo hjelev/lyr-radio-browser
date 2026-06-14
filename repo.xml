@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+	Lyrion Music Server third-party repository manifest.
+
+	Users add this file's RAW URL in the LMS web UI under
+	Settings > Plugins > "Additional Repositories":
+
+		https://raw.githubusercontent.com/hjelev/lyr-radio-browser/main/repo.xml
+
+	LMS then offers "Radio Browser" for one-click install/update.
+
+	RELEASE CHECKLIST (maintainers):
+	  1. Bump <version> here and in RadioBrowser/install.xml + CHANGELOG.md.
+	  2. Build the zip and get its SHA:   ./build.sh
+	  3. Create a GitHub release tagged v<version> and upload the zip as an asset.
+	  4. Update the <url> (tag + filename) and <sha> below to match the asset.
+	  5. Commit repo.xml to the main branch.
+
+	The <sha> MUST be the SHA1 of the exact zip referenced by <url>, or LMS
+	will refuse the download.
+-->
+<extensions>
+	<details>
+		<title lang="EN">Radio Browser (hjelev)</title>
+	</details>
+	<plugins>
+		<plugin name="RadioBrowser" version="1.0.0" minTarget="8.0" maxTarget="9.*">
+			<title lang="EN">Radio Browser</title>
+			<desc lang="EN">Browse and play internet radio stations from the community-driven Radio Browser directory (api.radio-browser.info). Search, top stations, by tag/genre and by country.</desc>
+			<creator>hjelev</creator>
+			<email>jeleff@gmail.com</email>
+			<link>https://github.com/hjelev/lyr-radio-browser</link>
+			<url>https://github.com/hjelev/lyr-radio-browser/releases/download/v1.0.0/RadioBrowser-1.0.0.zip</url>
+			<sha>REPLACE_WITH_SHA1_OF_ZIP</sha>
+		</plugin>
+	</plugins>
+</extensions>

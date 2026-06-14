@@ -1,0 +1,37 @@
+# String tokens for the Radio Browser plugin.
+# Lyrion looks up these tokens (via Slim::Utils::Strings) to render localized
+# UI labels. Only EN is provided here; translators can add more languages by
+# appending indented "<LANG>\t<text>" lines under each token.
+
+PLUGIN_RADIOBROWSER
+	EN	Radio Browser
+
+PLUGIN_RADIOBROWSER_DESC
+	EN	Browse and play internet radio stations from the community-driven Radio Browser directory (api.radio-browser.info).
+
+PLUGIN_RADIOBROWSER_SEARCH
+	EN	Search Stations
+
+PLUGIN_RADIOBROWSER_SEARCH_PROMPT
+	EN	Search for a station by name
+
+PLUGIN_RADIOBROWSER_TOP
+	EN	Top Stations
+
+PLUGIN_RADIOBROWSER_TOP_VOTED
+	EN	Most Voted
+
+PLUGIN_RADIOBROWSER_TOP_CLICKED
+	EN	Most Played
+
+PLUGIN_RADIOBROWSER_BY_TAG
+	EN	By Tag / Genre
+
+PLUGIN_RADIOBROWSER_BY_COUNTRY
+	EN	By Country
+
+PLUGIN_RADIOBROWSER_ERROR
+	EN	Unable to load stations. Please try again later.
+
+PLUGIN_RADIOBROWSER_NONE
+	EN	No stations found
