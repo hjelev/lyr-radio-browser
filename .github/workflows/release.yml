@@ -52,6 +52,13 @@ jobs:
           sed -i "s|<version>[^<]*</version>|<version>${{ steps.ver.outputs.version }}</version>|" \
             RadioBrowser/install.xml
 
+      - name: Seed docs/index.html from template
+        run: |
+          # Always regenerate docs/index.html from the template so content edits
+          # (copy, layout, ...) only ever live in docs/index.html.example.
+          echo "Copying docs/index.html.example -> docs/index.html"
+          cp docs/index.html.example docs/index.html
+
       - name: Sync version into docs page
         run: |
           # The docs landing page shows the version in every:

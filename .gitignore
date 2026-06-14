@@ -13,3 +13,6 @@ CLAUDE.local.md
 
 # Local repository manifest (use repo.xml.example as template)
 repo.xml
+
+# Generated docs landing page (use docs/index.html.example as template)
+docs/index.html
