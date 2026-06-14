@@ -20,8 +20,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - DNS round-robin mirror selection against `all.api.radio-browser.info` using
   `Net::DNS`, with a graceful fallback to `https://all.api.radio-browser.info`
   when `Net::DNS` is unavailable.
-- Click-tracking playback via `/json/url/<uuid>`: each play registers a click
-  and resolves the real stream URL before handing it to the player.
+- Click-tracking playback via the `/m3u/url/<uuid>` playlist endpoint: each
+  station is a directly playable stream whose URL registers a click and resolves
+  to the live stream (stations appear as playable tracks, not folders).
 - 24-hour caching of tag and country lists via `Slim::Utils::Cache`.
 - Robust error handling: JSON decoded inside `eval`, async failures degrade to a
   graceful "Unable to load" item, and broken stations (`lastcheckok == 0`) are

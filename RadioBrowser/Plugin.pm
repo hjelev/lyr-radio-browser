@@ -351,9 +351,17 @@ sub stationsByCountry {
 # ----------------------------------------------------------------------------
 # Convert a Radio Browser station array into OPML audio items.
 #
-# Each item is playable; selecting it triggers playStation() which registers a
-# click and resolves the real stream URL. Bitrate / codec / country are shown
-# on line2 so the metadata is visible without an extra navigation step.
+# Each station is a directly playable stream. Its url points at the Radio
+# Browser click-tracking playlist endpoint /m3u/url/<uuid>: when the player
+# fetches it the API registers a "click" and returns an M3U (Content-Type
+# audio/mpegurl) containing the live stream, which LMS resolves and plays.
+#
+# IMPORTANT: url must be a plain STRING for the item to appear as a playable
+# stream. A code reference here would make LMS render the station as a
+# browsable folder instead of a track.
+#
+# Bitrate / codec / country are shown on line2 so the metadata is visible
+# without an extra navigation step.
 # ----------------------------------------------------------------------------
 
 sub _stationsToOpml {
@@ -372,63 +380,19 @@ sub _stationsToOpml {
 		my $line2 = join( " \x{00B7} ", @meta );    # space-middot-space separator
 
 		push @items, {
-			name        => $s->{name},
-			line1       => $s->{name},
-			line2       => $line2,
-			type        => 'audio',
-			url         => \&playStation,
-			passthrough => [ {
-				stationuuid => $s->{stationuuid},
-				name        => $s->{name},
-				bitrate     => $s->{bitrate},
-				codec       => $s->{codec},
-			} ],
-			image       => $s->{favicon} || undef,
-			on_select   => 'play',
-			play        => undef,
+			name    => $s->{name},
+			line1   => $s->{name},
+			line2   => $line2,
+			type    => 'audio',
+			# Click-tracking playlist endpoint -> counts a click and yields the
+			# real stream. Plain string => LMS treats it as a playable track.
+			url     => $BASE_URL . '/m3u/url/' . _uri( $s->{stationuuid} ),
+			image   => $s->{favicon} || undef,
+			bitrate => $s->{bitrate} ? $s->{bitrate} * 1000 : undef,
 		};
 	}
 
 	return @items ? \@items : [ { name => cstring( $client, 'PLUGIN_RADIOBROWSER_NONE' ), type => 'text' } ];
-}
-
-# ----------------------------------------------------------------------------
-# Resolve a station for playback through the click-tracking endpoint
-# (CLAUDE.md sec 3.4). GET /json/url/<uuid> registers the click and returns the
-# resolved stream URL in JSON; we then hand that real URL to the player.
-# ----------------------------------------------------------------------------
-
-sub playStation {
-	my ( $client, $cb, $args, $pt ) = @_;
-
-	my $uuid = $pt->{stationuuid};
-
-	unless ($uuid) {
-		return $cb->( _errorItems() );
-	}
-
-	_apiGet(
-		'/json/url/' . _uri( $uuid ),
-		sub {
-			my $data   = shift;
-			my $stream = ref $data eq 'HASH' ? $data->{url} : undef;
-
-			unless ($stream) {
-				$log->error("No stream URL returned for station $uuid");
-				return $cb->( _errorItems() );
-			}
-
-			$cb->( {
-				items => [ {
-					name    => $pt->{name},
-					type    => 'audio',
-					url     => $stream,
-					bitrate => $pt->{bitrate} ? $pt->{bitrate} * 1000 : undef,
-				} ],
-			} );
-		},
-		sub { $cb->( _errorItems() ) },
-	);
 }
 
 # ----------------------------------------------------------------------------

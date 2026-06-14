@@ -105,8 +105,10 @@ strictly:
 2. **Descriptive User-Agent.** Every request sends
    `User-Agent: LyrionRadioBrowserPlugin/1.0`.
 3. **UUIDs only.** Stations are identified solely by `stationuuid`.
-4. **Click tracking.** Playback is resolved through `/json/url/<uuid>`, which
-   registers a click and returns the real stream URL handed to the player.
+4. **Click tracking.** Each station's playable URL is the click-tracking
+   playlist endpoint `/m3u/url/<uuid>`. When the player opens it the API
+   registers a click and returns an M3U pointing at the live stream, which LMS
+   resolves and plays.
 
 Tag and country lists are cached for 24 hours to reduce load on the directory.
 
@@ -143,8 +145,7 @@ Key subroutines:
 | `topStations`        | Top voted / clicked.                                       |
 | `listTags` / `stationsByTag`        | Tag list and drill-down.                    |
 | `listCountries` / `stationsByCountry` | Country list and drill-down.              |
-| `_stationsToOpml`    | Converts API stations into OPML audio items.              |
-| `playStation`        | Click-tracking resolve-then-play.                         |
+| `_stationsToOpml`    | Converts API stations into playable OPML audio items (click-tracking `/m3u/url/` URL). |
 
 ---
 

@@ -243,9 +243,9 @@
           <code>User-Agent: LyrionRadioBrowserPlugin/1.0</code>.</li>
       <li><strong>UUIDs only.</strong> Stations are identified solely by
           <code>stationuuid</code>.</li>
-      <li><strong>Click tracking.</strong> Playback resolves through
-          <code>/json/url/&lt;uuid&gt;</code>, registering a click and returning
-          the real stream URL.</li>
+      <li><strong>Click tracking.</strong> Each station plays via the
+          <code>/m3u/url/&lt;uuid&gt;</code> endpoint, which registers a click and
+          returns an M3U pointing at the live stream.</li>
     </ol>
     <p>Tag and country lists are cached for 24 hours to ease load on the directory.</p>
   </section>
@@ -298,7 +298,7 @@
       <li>Search, Top Stations (Most Voted / Most Played), By Tag/Genre, and By Country menus under the native Radio menu.</li>
       <li>Inline station metadata (bitrate &middot; codec &middot; country) and favicons.</li>
       <li>DNS round-robin mirror selection with graceful fallback; mandatory User-Agent.</li>
-      <li>Click-tracking playback via <code>/json/url/&lt;uuid&gt;</code>.</li>
+      <li>Click-tracking playback via <code>/m3u/url/&lt;uuid&gt;</code>.</li>
       <li>24-hour caching of tag/country lists; robust JSON and HTTP error handling.</li>
     </ul>
     <p>Full history in <a href="../CHANGELOG.md">CHANGELOG.md</a>.</p>
