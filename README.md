@@ -123,10 +123,9 @@ Tag and country lists are cached for 24 hours to reduce load on the directory.
 
 ```
 RadioBrowser/
-├── install.xml         # Plugin metadata read by LMS at startup (menu=radios, icon)
-├── Plugin.pm           # Core module (extends Slim::Plugin::OPMLBased)
-├── ProtocolHandler.pm  # radiobrowser:// handler: records plays, resolves streams
-├── strings.txt         # Localized UI label tokens
+├── install.xml   # Plugin metadata read by LMS at startup (menu=radios, icon)
+├── Plugin.pm     # Core module (extends Slim::Plugin::OPMLBased)
+├── strings.txt   # Localized UI label tokens
 └── HTML/EN/plugins/RadioBrowser/html/images/icon.png   # Radio-menu icon
 ```
 
@@ -152,7 +151,8 @@ Key subroutines:
 | `listTags` / `stationsByTag`        | Tag list and drill-down.                    |
 | `listCountries` / `stationsByCountry` | Country list and drill-down.              |
 | `recentStations` / `recordRecent` | Recently Played list (rendered / updated on each play). |
-| `_stationsToOpml`    | Converts API stations into playable OPML audio items (`radiobrowser://` URL). |
+| `_onPlaylistCmd`     | Observes playlist commands to capture plays for Recently Played. |
+| `_stationsToOpml`    | Converts API stations into playable OPML audio items (click-tracking `/m3u/url/` URL). |
 
 ---
 

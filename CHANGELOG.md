@@ -9,11 +9,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - README: plugin logo is now inline with the title and slightly smaller.
 
-## [v0.3.0] - 2026-06-15
+## [v0.2.6] - 2026-06-15
 
 - Added a **Recently Played** section that remembers the stations you actually play (most recent first, duplicates moved to the top) and persists across server restarts.
 - Added a `recentCount` setting (default 100, range 1–1000) controlling how many stations are remembered, plus a **Clear recently played** action in the list.
-- Playback now routes through a new `radiobrowser://` protocol handler so each play is recorded; community click counts still register via the `/json/url/<uuid>` endpoint.
+- Plays are captured by observing playlist commands, leaving the proven `/m3u/url/<uuid>` playback path (and community click tracking) unchanged.
 
 ## [v0.2.5] - 2026-06-14
 
