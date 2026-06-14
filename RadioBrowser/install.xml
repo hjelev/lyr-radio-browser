@@ -15,6 +15,12 @@
 	<desc lang="EN">Browse and play internet radio stations from the community-driven Radio Browser directory (api.radio-browser.info).</desc>
 	<icon>plugins/RadioBrowser/html/images/icon.png</icon>
 	<link>https://masoko.net/lyr-radio-browser/</link>
+	<!--
+		<optionsURL> makes LMS show a "Settings" link next to the plugin in the
+		Manage Plugins list. It must match Settings.pm's page() URL. Without it
+		the settings page is only reachable via Settings > Advanced.
+	-->
+	<optionsURL>plugins/RadioBrowser/settings/basic.html</optionsURL>
 
 	<!--
 		Restrict to the LMS application. minVersion 8.0 is required because the
