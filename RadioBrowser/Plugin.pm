@@ -36,8 +36,10 @@ use constant DNS_NAME    => 'all.api.radio-browser.info';
 use constant FALLBACK_URL => 'https://all.api.radio-browser.info';
 use constant LIST_TTL    => 86400;    # cache tags/countries for 1 day
 use constant GEO_TTL     => 604800;   # cache detected country for 7 days
-use constant STATION_LIMIT => 5000;   # effectively "all"; bounds worst-case size
-use constant STATION_TTL => 3600;     # cache station result lists for 1 hour
+# Defaults for the user-configurable station result cap / cache lifetime
+# (overridable via the settings page; see _maxResults / _cacheTTLSecs).
+use constant DEFAULT_MAX_RESULTS   => 5000;   # effectively "all"; bounds worst-case size
+use constant DEFAULT_CACHE_TTL_MIN => 60;     # cache station result lists for 1 hour
 
 # IP-geolocation providers, tried in order until one yields a 2-letter country
 # code. LMS has no built-in country pref, so we infer it from the server's
@@ -71,7 +73,15 @@ sub initPlugin {
 
 	$cache = Slim::Utils::Cache->new();
 
-	$prefs->init({ countryOverride => '' });
+	$prefs->init({
+		countryOverride => '',
+		maxResults      => DEFAULT_MAX_RESULTS,
+		cacheTTL        => DEFAULT_CACHE_TTL_MIN,
+	});
+
+	# Keep the numeric prefs sane: positive integers within practical bounds.
+	$prefs->setValidate({ validator => 'intlimit', low => 1, high => 100000 }, 'maxResults');
+	$prefs->setValidate({ validator => 'intlimit', low => 1, high => 10080   }, 'cacheTTL');
 
 	# Pick an API mirror via DNS round-robin (one-time, at startup).
 	$BASE_URL = _resolveBaseUrl();
@@ -274,7 +284,7 @@ sub searchStations {
 		unless length $query;
 
 	my $path = '/json/stations/byname/' . _uri( $query )
-		. '?limit=' . STATION_LIMIT . '&hidebroken=true&order=votes&reverse=true';
+		. '?limit=' . _maxResults() . '&hidebroken=true&order=votes&reverse=true';
 
 	_stationsRequest( $client, $cb, $path );
 }
@@ -287,7 +297,7 @@ sub topStations {
 	my ( $client, $cb, $args, $pt ) = @_;
 
 	my $order = ( $pt && $pt->{order} ) || 'topvote';
-	my $path  = "/json/stations/$order/" . STATION_LIMIT . '?hidebroken=true';
+	my $path  = "/json/stations/$order/" . _maxResults() . '?hidebroken=true';
 
 	_stationsRequest( $client, $cb, $path );
 }
@@ -337,7 +347,7 @@ sub stationsByTag {
 
 	my $tag  = ( $pt && $pt->{tag} ) || '';
 	my $path = '/json/stations/bytagexact/' . _uri( $tag )
-		. '?limit=' . STATION_LIMIT . '&hidebroken=true&order=votes&reverse=true';
+		. '?limit=' . _maxResults() . '&hidebroken=true&order=votes&reverse=true';
 
 	_stationsRequest( $client, $cb, $path );
 }
@@ -388,7 +398,7 @@ sub stationsByCountry {
 	# Order defaults to votes; callers can request 'clickcount' for "most played".
 	my $order = ( $pt && $pt->{order} ) || 'votes';
 	my $path = '/json/stations/bycountrycodeexact/' . _uri( $code )
-		. '?limit=' . STATION_LIMIT . '&hidebroken=true&order=' . _uri( $order ) . '&reverse=true';
+		. '?limit=' . _maxResults() . '&hidebroken=true&order=' . _uri( $order ) . '&reverse=true';
 
 	_stationsRequest( $client, $cb, $path );
 }
@@ -414,7 +424,7 @@ sub _stationsRequest {
 		$path,
 		sub {
 			my $stations = shift;
-			$cache->set( $key, $stations, STATION_TTL );
+			$cache->set( $key, $stations, _cacheTTLSecs() );
 			$cb->( _stationsFeed( $client, $stations ) );
 		},
 		sub { $cb->( _errorItems() ) },
@@ -504,6 +514,19 @@ sub _uri {
 	$s = '' unless defined $s;
 	$s =~ s/([^A-Za-z0-9\-_.~])/sprintf('%%%02X', ord($1))/ge;
 	return $s;
+}
+
+# Max stations to request per query (settings-configurable, with a safe default).
+sub _maxResults {
+	my $n = $prefs->get('maxResults');
+	return ( $n && $n =~ /^\d+$/ && $n > 0 ) ? $n : DEFAULT_MAX_RESULTS;
+}
+
+# Station-result cache lifetime in seconds (pref stored in minutes).
+sub _cacheTTLSecs {
+	my $m = $prefs->get('cacheTTL');
+	$m = ( $m && $m =~ /^\d+$/ && $m > 0 ) ? $m : DEFAULT_CACHE_TTL_MIN;
+	return $m * 60;
 }
 
 # ----------------------------------------------------------------------------

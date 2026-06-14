@@ -3,10 +3,11 @@ package Plugins::RadioBrowser::Settings;
 # ----------------------------------------------------------------------------
 # Web settings page for the Radio Browser plugin.
 #
-# Exposes a single preference - countryOverride - so the user can pin the
-# country used for the "Local Stations" menu instead of relying on automatic
-# geo-IP detection (handy when the server is behind a VPN). A blank value means
-# auto-detect.
+# Exposes:
+#   * countryOverride - pin the country used for "Local Stations" instead of
+#     relying on automatic geo-IP detection (blank = auto-detect).
+#   * maxResults      - max stations fetched per query.
+#   * cacheTTL        - station-result cache lifetime, in minutes.
 # ----------------------------------------------------------------------------
 
 use strict;
@@ -27,7 +28,7 @@ sub page {
 }
 
 sub prefs {
-	return ( $prefs, qw(countryOverride) );
+	return ( $prefs, qw(countryOverride maxResults cacheTTL) );
 }
 
 1;
