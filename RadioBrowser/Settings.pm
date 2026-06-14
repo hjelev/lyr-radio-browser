@@ -8,6 +8,8 @@ package Plugins::RadioBrowser::Settings;
 #     relying on automatic geo-IP detection (blank = auto-detect).
 #   * maxResults      - max stations fetched per query.
 #   * cacheTTL        - station-result cache lifetime, in minutes.
+#   * hideBroken      - hide stations failing the last reachability check (on by
+#     default; uncheck to show all stations, including broken/unverified ones).
 # ----------------------------------------------------------------------------
 
 use strict;
@@ -28,7 +30,7 @@ sub page {
 }
 
 sub prefs {
-	return ( $prefs, qw(countryOverride maxResults cacheTTL) );
+	return ( $prefs, qw(countryOverride maxResults cacheTTL hideBroken) );
 }
 
 1;

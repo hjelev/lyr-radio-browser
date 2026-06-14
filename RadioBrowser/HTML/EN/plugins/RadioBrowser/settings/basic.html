@@ -23,6 +23,14 @@
 		       value="[% prefs.cacheTTL | html %]" size="8">
 		<div class="prefDesc">[% "PLUGIN_RADIOBROWSER_SETTINGS_CACHETTL_DESC" | string %]</div>
 	</div>
+
+	<div class="settingSubGroup">
+		<div class="prefName">[% "PLUGIN_RADIOBROWSER_SETTINGS_HIDEBROKEN" | string %]</div>
+		<input type="hidden" name="pref_hideBroken" value="0">
+		<input type="checkbox" name="pref_hideBroken" id="pref_hideBroken"
+		       value="1"[% IF prefs.hideBroken %] checked="checked"[% END %]>
+		<div class="prefDesc">[% "PLUGIN_RADIOBROWSER_SETTINGS_HIDEBROKEN_DESC" | string %]</div>
+	</div>
 </div>
 
 [% PROCESS settings/footer.html %]
