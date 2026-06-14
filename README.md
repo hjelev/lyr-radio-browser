@@ -43,7 +43,7 @@ Install straight from the LMS Plugins screen and get future updates automaticall
    an empty field:
 
    ```
-   https://raw.githubusercontent.com/hjelev/lyr-radio-browser/main/repo.xml
+   https://raw.githubusercontent.com/hjelev/lyr-radio-browser/refs/heads/master/repo.xml
    ```
 
 3. Click **Apply**. LMS reloads the plugin list.
@@ -159,23 +159,36 @@ Key subroutines:
 ## Releasing (maintainers)
 
 Distribution is driven by [`repo.xml`](repo.xml) — the repository manifest LMS
-reads. To publish a new version:
+reads. Releases are **fully automated** by GitHub Actions
+([`.github/workflows/release.yml`](.github/workflows/release.yml)).
 
-1. Bump `<version>` in `RadioBrowser/install.xml`, add a `CHANGELOG.md` entry,
-   and update the version in `repo.xml`.
-2. Build the release zip and get its checksum:
+To publish a new version:
+
+1. Update `CHANGELOG.md`.
+2. Tag and push:
 
    ```bash
-   ./build.sh
+   git tag v1.0.1
+   git push origin v1.0.1
    ```
 
-   This writes `dist/RadioBrowser-<version>.zip` and prints the **SHA1**.
-3. Create a GitHub release tagged `v<version>` and upload that zip as an asset.
-4. In `repo.xml`, set `<url>` to the uploaded asset's URL and `<sha>` to the
-   printed SHA1, then commit `repo.xml` to `main`.
+The workflow then:
+
+- syncs the version into `RadioBrowser/install.xml`,
+- builds `RadioBrowser-<version>.zip` via [`build.sh`](build.sh),
+- creates a GitHub Release tagged `v<version>` with the zip attached,
+- rewrites `repo.xml` with the release URL and the zip's **SHA1**, and commits
+  it back to `master`.
+
+Because the install URL points at `repo.xml` on `master`, LMS picks up the new
+version automatically once the workflow finishes. You can also trigger it
+manually from the **Actions** tab (*Release plugin → Run workflow*).
+
+> Building locally: run `./build.sh` to produce `dist/RadioBrowser-<version>.zip`
+> and print its SHA1 — handy for testing, but not required for a release.
 
 LMS verifies the downloaded zip against `<sha>`, so the checksum **must** match
-the exact asset referenced by `<url>`.
+the exact asset referenced by `<url>` — the pipeline guarantees this.
 
 ## License & credits
 

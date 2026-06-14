@@ -5,7 +5,7 @@
 	Users add this file's RAW URL in the LMS web UI under
 	Settings > Plugins > "Additional Repositories":
 
-		https://raw.githubusercontent.com/hjelev/lyr-radio-browser/main/repo.xml
+		https://raw.githubusercontent.com/hjelev/lyr-radio-browser/refs/heads/master/repo.xml
 
 	LMS then offers "Radio Browser" for one-click install/update.
 
@@ -14,7 +14,7 @@
 	  2. Build the zip and get its SHA:   ./build.sh
 	  3. Create a GitHub release tagged v<version> and upload the zip as an asset.
 	  4. Update the <url> (tag + filename) and <sha> below to match the asset.
-	  5. Commit repo.xml to the main branch.
+	  5. Commit repo.xml to the master branch.
 
 	The <sha> MUST be the SHA1 of the exact zip referenced by <url>, or LMS
 	will refuse the download.

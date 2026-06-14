@@ -1,0 +1,98 @@
+name: Release plugin
+
+# Builds the plugin zip, publishes a GitHub Release with it as an asset, and
+# rewrites repo.xml (the LMS repository manifest) with the real download URL and
+# SHA1 so Lyrion can install/update the plugin.
+#
+# Trigger either way:
+#   * Push a tag:        git tag v1.0.0 && git push origin v1.0.0
+#   * Manually:          Actions tab -> "Release plugin" -> Run workflow (enter version)
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version to release, without the leading v (e.g. 1.0.0)'
+        required: true
+
+permissions:
+  contents: write   # needed to create releases and push the manifest commit
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout master
+        uses: actions/checkout@v4
+        with:
+          ref: master
+          fetch-depth: 0
+
+      - name: Determine version
+        id: ver
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            VERSION="${{ github.event.inputs.version }}"
+          else
+            VERSION="${GITHUB_REF_NAME#v}"   # strip leading "v" from the tag
+          fi
+          if [ -z "$VERSION" ]; then
+            echo "::error::Could not determine version"; exit 1
+          fi
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "tag=v$VERSION"   >> "$GITHUB_OUTPUT"
+          echo "Releasing version $VERSION"
+
+      - name: Sync version into install.xml
+        run: |
+          sed -i "s|<version>[^<]*</version>|<version>${{ steps.ver.outputs.version }}</version>|" \
+            RadioBrowser/install.xml
+
+      - name: Build plugin zip
+        id: build
+        run: |
+          chmod +x build.sh
+          ./build.sh
+          ZIP="dist/RadioBrowser-${{ steps.ver.outputs.version }}.zip"
+          SHA="$(sha1sum "$ZIP" | awk '{print $1}')"
+          echo "zip=$ZIP" >> "$GITHUB_OUTPUT"
+          echo "sha=$SHA" >> "$GITHUB_OUTPUT"
+          echo "Built $ZIP (sha1 $SHA)"
+
+      - name: Update repo.xml manifest
+        run: |
+          VERSION="${{ steps.ver.outputs.version }}"
+          TAG="${{ steps.ver.outputs.tag }}"
+          SHA="${{ steps.build.outputs.sha }}"
+          URL="https://github.com/${{ github.repository }}/releases/download/${TAG}/RadioBrowser-${VERSION}.zip"
+
+          sed -i -E "s|(<plugin name=\"RadioBrowser\" version=\")[^\"]*(\")|\1${VERSION}\2|" repo.xml
+          sed -i -E "s|<url>[^<]*</url>|<url>${URL}</url>|"                                   repo.xml
+          sed -i -E "s|<sha>[^<]*</sha>|<sha>${SHA}</sha>|"                                   repo.xml
+
+          echo "----- repo.xml plugin entry -----"
+          grep -E "<plugin|<url>|<sha>" repo.xml
+
+      - name: Commit updated manifest to master
+        run: |
+          git config user.name  "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add repo.xml RadioBrowser/install.xml
+          if git diff --cached --quiet; then
+            echo "No manifest changes to commit."
+          else
+            git commit -m "Release ${{ steps.ver.outputs.tag }}: update repo.xml (url + sha1)"
+            git push origin HEAD:master
+          fi
+
+      - name: Create / update GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.ver.outputs.tag }}
+          name: ${{ steps.ver.outputs.tag }}
+          files: ${{ steps.build.outputs.zip }}
+          generate_release_notes: true
