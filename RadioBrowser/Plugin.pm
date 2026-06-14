@@ -36,7 +36,8 @@ use constant DNS_NAME    => 'all.api.radio-browser.info';
 use constant FALLBACK_URL => 'https://all.api.radio-browser.info';
 use constant LIST_TTL    => 86400;    # cache tags/countries for 1 day
 use constant GEO_TTL     => 604800;   # cache detected country for 7 days
-use constant RESULT_LIMIT => 100;     # max stations per result list
+use constant STATION_LIMIT => 5000;   # effectively "all"; bounds worst-case size
+use constant STATION_TTL => 3600;     # cache station result lists for 1 hour
 
 # IP-geolocation providers, tried in order until one yields a 2-letter country
 # code. LMS has no built-in country pref, so we infer it from the server's
@@ -273,13 +274,9 @@ sub searchStations {
 		unless length $query;
 
 	my $path = '/json/stations/byname/' . _uri( $query )
-		. '?limit=' . RESULT_LIMIT . '&hidebroken=true&order=votes&reverse=true';
+		. '?limit=' . STATION_LIMIT . '&hidebroken=true&order=votes&reverse=true';
 
-	_apiGet(
-		$path,
-		sub { $cb->( _stationsFeed( $client, shift ) ) },
-		sub { $cb->( _errorItems() ) },
-	);
+	_stationsRequest( $client, $cb, $path );
 }
 
 # ----------------------------------------------------------------------------
@@ -290,13 +287,9 @@ sub topStations {
 	my ( $client, $cb, $args, $pt ) = @_;
 
 	my $order = ( $pt && $pt->{order} ) || 'topvote';
-	my $path  = "/json/stations/$order/" . RESULT_LIMIT . '?hidebroken=true';
+	my $path  = "/json/stations/$order/" . STATION_LIMIT . '?hidebroken=true';
 
-	_apiGet(
-		$path,
-		sub { $cb->( _stationsFeed( $client, shift ) ) },
-		sub { $cb->( _errorItems() ) },
-	);
+	_stationsRequest( $client, $cb, $path );
 }
 
 # ----------------------------------------------------------------------------
@@ -344,13 +337,9 @@ sub stationsByTag {
 
 	my $tag  = ( $pt && $pt->{tag} ) || '';
 	my $path = '/json/stations/bytagexact/' . _uri( $tag )
-		. '?limit=' . RESULT_LIMIT . '&hidebroken=true&order=votes&reverse=true';
+		. '?limit=' . STATION_LIMIT . '&hidebroken=true&order=votes&reverse=true';
 
-	_apiGet(
-		$path,
-		sub { $cb->( _stationsFeed( $client, shift ) ) },
-		sub { $cb->( _errorItems() ) },
-	);
+	_stationsRequest( $client, $cb, $path );
 }
 
 # ----------------------------------------------------------------------------
@@ -399,11 +388,35 @@ sub stationsByCountry {
 	# Order defaults to votes; callers can request 'clickcount' for "most played".
 	my $order = ( $pt && $pt->{order} ) || 'votes';
 	my $path = '/json/stations/bycountrycodeexact/' . _uri( $code )
-		. '?limit=' . RESULT_LIMIT . '&hidebroken=true&order=' . _uri( $order ) . '&reverse=true';
+		. '?limit=' . STATION_LIMIT . '&hidebroken=true&order=' . _uri( $order ) . '&reverse=true';
+
+	_stationsRequest( $client, $cb, $path );
+}
+
+# ----------------------------------------------------------------------------
+# Fetch a station list (cached) and hand it back as a grid feed.
+#
+# The full result set is cached per query ($path uniquely encodes it) so large
+# lists aren't refetched while the user scrolls/pages. We return ALL stations:
+# LMS XMLBrowser windows long lists server-side, so the client only receives the
+# slice it asks for and gets native scroll / next-page (no "load more" needed).
+# ----------------------------------------------------------------------------
+
+sub _stationsRequest {
+	my ( $client, $cb, $path ) = @_;
+
+	my $key = 'rb_stations:' . $path;
+	if ( my $stations = $cache->get($key) ) {
+		return $cb->( _stationsFeed( $client, $stations ) );
+	}
 
 	_apiGet(
 		$path,
-		sub { $cb->( _stationsFeed( $client, shift ) ) },
+		sub {
+			my $stations = shift;
+			$cache->set( $key, $stations, STATION_TTL );
+			$cb->( _stationsFeed( $client, $stations ) );
+		},
 		sub { $cb->( _errorItems() ) },
 	);
 }
