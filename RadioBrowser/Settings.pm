@@ -30,7 +30,7 @@ sub page {
 }
 
 sub prefs {
-	return ( $prefs, qw(countryOverride maxResults cacheTTL hideBroken) );
+	return ( $prefs, qw(countryOverride maxResults maxTags cacheTTL hideBroken) );
 }
 
 1;

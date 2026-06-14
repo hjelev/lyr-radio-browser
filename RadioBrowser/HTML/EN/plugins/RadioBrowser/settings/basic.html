@@ -17,6 +17,14 @@
 	</div>
 
 	<div class="settingSubGroup">
+		<div class="prefName">[% "PLUGIN_RADIOBROWSER_SETTINGS_MAXTAGS" | string %]</div>
+		<input type="number" min="1" max="10000" step="1"
+		       name="pref_maxTags" id="pref_maxTags"
+		       value="[% prefs.maxTags | html %]" size="8">
+		<div class="prefDesc">[% "PLUGIN_RADIOBROWSER_SETTINGS_MAXTAGS_DESC" | string %]</div>
+	</div>
+
+	<div class="settingSubGroup">
 		<div class="prefName">[% "PLUGIN_RADIOBROWSER_SETTINGS_CACHETTL" | string %]</div>
 		<input type="number" min="1" max="10080" step="1"
 		       name="pref_cacheTTL" id="pref_cacheTTL"

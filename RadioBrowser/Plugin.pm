@@ -39,6 +39,7 @@ use constant GEO_TTL     => 604800;   # cache detected country for 7 days
 # Defaults for the user-configurable station result cap / cache lifetime
 # (overridable via the settings page; see _maxResults / _cacheTTLSecs).
 use constant DEFAULT_MAX_RESULTS   => 5000;   # effectively "all"; bounds worst-case size
+use constant DEFAULT_MAX_TAGS      => 1000;   # popular tags shown in browse list
 use constant DEFAULT_CACHE_TTL_MIN => 60;     # cache station result lists for 1 hour
 
 # IP-geolocation providers, tried in order until one yields a 2-letter country
@@ -76,13 +77,15 @@ sub initPlugin {
 	$prefs->init({
 		countryOverride => '',
 		maxResults      => DEFAULT_MAX_RESULTS,
+		maxTags         => DEFAULT_MAX_TAGS,
 		cacheTTL        => DEFAULT_CACHE_TTL_MIN,
 		hideBroken      => 1,
 	});
 
 	# Keep the numeric prefs sane: positive integers within practical bounds.
 	$prefs->setValidate({ validator => 'intlimit', low => 1, high => 100000 }, 'maxResults');
-	$prefs->setValidate({ validator => 'intlimit', low => 1, high => 10080   }, 'cacheTTL');
+	$prefs->setValidate({ validator => 'intlimit', low => 1, high => 10000  }, 'maxTags');
+	$prefs->setValidate({ validator => 'intlimit', low => 1, high => 10080  }, 'cacheTTL');
 
 	# Pick an API mirror via DNS round-robin (one-time, at startup).
 	$BASE_URL = _resolveBaseUrl();
@@ -317,18 +320,19 @@ sub listTags {
 		url  => \&searchTags,
 	};
 
-	my $cached = $cache->get('radiobrowser_tags');
+	# Cache key encodes the limit so a settings change yields a fresh fetch.
+	my $cache_key = 'radiobrowser_tags:' . _maxTags();
+	my $cached    = $cache->get($cache_key);
 	if ( $cached ) {
 		my $items = _tagItems( $client, $cached );
 		return $cb->( { items => [ $search_item, @$items ] } );
 	}
 
-	# Limit to popular tags to keep the list usable on a remote/IR UI.
 	_apiGet(
-		'/json/tags?order=stationcount&reverse=true&limit=200' . _brokenSuffix(),
+		'/json/tags?order=stationcount&reverse=true&limit=' . _maxTags() . _brokenSuffix(),
 		sub {
 			my $tags = shift;
-			$cache->set( 'radiobrowser_tags', $tags, LIST_TTL );
+			$cache->set( $cache_key, $tags, LIST_TTL );
 			my $items = _tagItems( $client, $tags );
 			$cb->( { items => [ $search_item, @$items ] } );
 		},
@@ -551,6 +555,12 @@ sub _uri {
 sub _maxResults {
 	my $n = $prefs->get('maxResults');
 	return ( $n && $n =~ /^\d+$/ && $n > 0 ) ? $n : DEFAULT_MAX_RESULTS;
+}
+
+# Max tags to show in the Tags browse list (settings-configurable, with a safe default).
+sub _maxTags {
+	my $n = $prefs->get('maxTags');
+	return ( $n && $n =~ /^\d+$/ && $n > 0 ) ? $n : DEFAULT_MAX_TAGS;
 }
 
 # Whether to hide stations that failed Radio Browser's last reachability check.

@@ -54,6 +54,12 @@ PLUGIN_RADIOBROWSER_SETTINGS_MAXRESULTS
 PLUGIN_RADIOBROWSER_SETTINGS_MAXRESULTS_DESC
 	EN	Maximum number of stations fetched for each list (Search, Top Stations, By Tag, By Country). Higher values show more stations but use more memory. Default: 5000.
 
+PLUGIN_RADIOBROWSER_SETTINGS_MAXTAGS
+	EN	Maximum tags in list
+
+PLUGIN_RADIOBROWSER_SETTINGS_MAXTAGS_DESC
+	EN	Maximum number of tags shown in the Tags browse list. The Radio Browser directory has ~11 000 tags; higher values show more but may slow down the initial load. Default: 1000.
+
 PLUGIN_RADIOBROWSER_SETTINGS_CACHETTL
 	EN	Cache lifetime (minutes)
 
