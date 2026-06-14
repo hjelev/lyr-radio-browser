@@ -63,13 +63,12 @@ jobs:
           echo "sha=$SHA" >> "$GITHUB_OUTPUT"
           echo "Built $ZIP (sha1 $SHA)"
 
-      - name: Ensure repo.xml exists
+      - name: Seed repo.xml from template
         run: |
-          # repo.xml is gitignored, so seed it from the template on a fresh checkout.
-          if [ ! -f repo.xml ]; then
-            echo "repo.xml missing; copying from repo.xml.example"
-            cp repo.xml.example repo.xml
-          fi
+          # Always regenerate repo.xml from the template so manifest edits
+          # (link, title, desc, ...) only ever live in repo.xml.example.
+          echo "Copying repo.xml.example -> repo.xml"
+          cp repo.xml.example repo.xml
 
       - name: Update repo.xml manifest
         run: |

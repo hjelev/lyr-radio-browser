@@ -219,7 +219,7 @@ sub searchStations {
 
 	_apiGet(
 		$path,
-		sub { $cb->( { items => _stationsToOpml( $client, shift ) } ) },
+		sub { $cb->( _stationsFeed( $client, shift ) ) },
 		sub { $cb->( _errorItems() ) },
 	);
 }
@@ -236,7 +236,7 @@ sub topStations {
 
 	_apiGet(
 		$path,
-		sub { $cb->( { items => _stationsToOpml( $client, shift ) } ) },
+		sub { $cb->( _stationsFeed( $client, shift ) ) },
 		sub { $cb->( _errorItems() ) },
 	);
 }
@@ -290,7 +290,7 @@ sub stationsByTag {
 
 	_apiGet(
 		$path,
-		sub { $cb->( { items => _stationsToOpml( $client, shift ) } ) },
+		sub { $cb->( _stationsFeed( $client, shift ) ) },
 		sub { $cb->( _errorItems() ) },
 	);
 }
@@ -343,7 +343,7 @@ sub stationsByCountry {
 
 	_apiGet(
 		$path,
-		sub { $cb->( { items => _stationsToOpml( $client, shift ) } ) },
+		sub { $cb->( _stationsFeed( $client, shift ) ) },
 		sub { $cb->( _errorItems() ) },
 	);
 }
@@ -388,7 +388,11 @@ sub _stationsToOpml {
 			# real stream. Plain string => LMS treats it as a playable track.
 			# (A code reference here would make LMS render it as a folder.)
 			url       => $BASE_URL . '/m3u/url/' . _uri( $s->{stationuuid} ),
-			image     => $s->{favicon} || undef,
+			# Fall back to the plugin's bundled icon so grid tiles aren't blank
+			# (and drop malformed favicon values that would render broken).
+			image     => ( $s->{favicon} && $s->{favicon} =~ m{^https?://} )
+			             ? $s->{favicon}
+			             : 'plugins/RadioBrowser/html/images/icon.png',
 			bitrate   => $s->{bitrate} ? $s->{bitrate} * 1000 : undef,
 			on_select => 'play',    # explicit play-on-select hint
 			playall   => 1,
@@ -396,6 +400,25 @@ sub _stationsToOpml {
 	}
 
 	return @items ? \@items : [ { name => cstring( $client, 'PLUGIN_RADIOBROWSER_NONE' ), type => 'text' } ];
+}
+
+# ----------------------------------------------------------------------------
+# Wrap a station list in a feed result that asks grid-capable UIs (Material
+# skin, controller apps) to render the stations as large artwork tiles instead
+# of a one-line text list. menuStyle 'album' + windowStyle 'icon_list' is the
+# documented SlimBrowse hint (see slimbrowse.md <window_fields>).
+# ----------------------------------------------------------------------------
+
+sub _stationsFeed {
+	my ( $client, $stations ) = @_;
+
+	return {
+		items  => _stationsToOpml( $client, $stations ),
+		window => {
+			menuStyle   => 'album',
+			windowStyle => 'icon_list',
+		},
+	};
 }
 
 # ----------------------------------------------------------------------------

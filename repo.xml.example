@@ -1,28 +1,4 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!--
-	Lyrion Music Server third-party repository manifest.
-
-	Copy this file to repo.xml and fill in the release details:
-
-		cp repo.xml.example repo.xml
-
-	Users add repo.xml's RAW URL in the LMS web UI under
-	Settings > Plugins > "Additional Repositories":
-
-		https://raw.githubusercontent.com/hjelev/lyr-radio-browser/refs/heads/master/repo.xml
-
-	LMS then offers "Radio Browser" for one-click install/update.
-
-	RELEASE CHECKLIST (maintainers):
-	  1. Bump <version> here and in RadioBrowser/install.xml + CHANGELOG.md.
-	  2. Build the zip and get its SHA:   ./build.sh
-	  3. Create a GitHub release tagged v<version> and upload the zip as an asset.
-	  4. Update the <url> (tag + filename) and <sha> below to match the asset.
-	  5. Commit repo.xml to the master branch.
-
-	The <sha> MUST be the SHA1 of the exact zip referenced by <url>, or LMS
-	will refuse the download.
--->
 <extensions>
 	<details>
 		<title lang="EN">Radio Browser (hjelev)</title>
