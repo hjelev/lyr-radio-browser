@@ -189,10 +189,10 @@
   <section id="features">
     <h2>Features</h2>
     <div class="cards">
-      <div class="card"><h3>Search</h3><p>Find stations by name, ordered by community votes.</p></div>
-      <div class="card"><h3>Top Stations</h3><p>Most Voted and Most Played lists (top 100).</p></div>
-      <div class="card"><h3>By Tag / Genre</h3><p>Drill into the 200 most popular tags.</p></div>
-      <div class="card"><h3>By Country</h3><p>Browse every country with stations.</p></div>
+      <div class="card"><h3>Search</h3><p>Find stations by name, ordered by community votes. (~58k stations)</p></div>
+      <div class="card"><h3>Top Stations</h3><p>Most Voted and Most Played lists (top 5k).</p></div>
+      <div class="card"><h3>By Tag / Genre</h3><p>Drill into the ~11k most popular tags.</p></div>
+      <div class="card"><h3>By Country</h3><p>Browse every country with stations (250+ countries).</p></div>
       <div class="card"><h3>Inline metadata</h3><p>Bitrate &middot; codec &middot; country shown on each line, with favicons.</p></div>
       <div class="card"><h3>Community-friendly</h3><p>Honours every Radio Browser API guideline.</p></div>
     </div>
