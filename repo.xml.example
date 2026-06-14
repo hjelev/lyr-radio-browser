@@ -33,7 +33,7 @@
 			<desc lang="EN">Browse and play internet radio stations from the community-driven Radio Browser directory (api.radio-browser.info). Search, top stations, by tag/genre and by country.</desc>
 			<creator>hjelev</creator>
 			<email>jeleff@gmail.com</email>
-			<link>https://github.com/hjelev/lyr-radio-browser</link>
+			<link>https://masoko.net/lyr-radio-browser/</link>
 			<url>https://github.com/hjelev/lyr-radio-browser/releases/download/v0.1.4/RadioBrowser-0.1.4.zip</url>
 			<sha>dba4581092d54bc375141d32520045039e7e874c</sha>
 		</plugin>

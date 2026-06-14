@@ -14,7 +14,7 @@
 	<module>Plugins::RadioBrowser::Plugin</module>
 	<desc lang="EN">Browse and play internet radio stations from the community-driven Radio Browser directory (api.radio-browser.info).</desc>
 	<icon>plugins/RadioBrowser/html/images/icon.png</icon>
-	<link>https://github.com/hjelev/lyr-radio-browser</link>
+	<link>https://masoko.net/lyr-radio-browser/</link>
 
 	<!--
 		Restrict to the LMS application. minVersion 8.0 is required because the
