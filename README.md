@@ -1,8 +1,4 @@
-<p align="center">
-  <img src="docs/images/logo.png" alt="Lyrion Radio Browser logo" width="160">
-</p>
-
-# Lyrion Radio Browser Plugin
+<h1><img src="docs/images/logo.png" alt="Lyrion Radio Browser logo" width="100" valign="middle"> Lyrion Radio Browser Plugin</h1>
 
 Browse and play internet radio stations from the community-driven
 [Radio Browser](https://www.radio-browser.info/) directory
