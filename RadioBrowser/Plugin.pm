@@ -311,8 +311,17 @@ sub topStations {
 sub listTags {
 	my ( $client, $cb, $args ) = @_;
 
+	my $search_item = {
+		name => cstring( $client, 'PLUGIN_RADIOBROWSER_SEARCH_TAGS' ),
+		type => 'search',
+		url  => \&searchTags,
+	};
+
 	my $cached = $cache->get('radiobrowser_tags');
-	return $cb->( { items => _tagItems( $client, $cached ) } ) if $cached;
+	if ( $cached ) {
+		my $items = _tagItems( $client, $cached );
+		return $cb->( { items => [ $search_item, @$items ] } );
+	}
 
 	# Limit to popular tags to keep the list usable on a remote/IR UI.
 	_apiGet(
@@ -320,6 +329,26 @@ sub listTags {
 		sub {
 			my $tags = shift;
 			$cache->set( 'radiobrowser_tags', $tags, LIST_TTL );
+			my $items = _tagItems( $client, $tags );
+			$cb->( { items => [ $search_item, @$items ] } );
+		},
+		sub { $cb->( _errorItems() ) },
+	);
+}
+
+sub searchTags {
+	my ( $client, $cb, $args ) = @_;
+
+	my $query = $args->{search} || '';
+	$query =~ s/^\s+|\s+$//g;
+
+	return $cb->( { items => [ { name => cstring( $client, 'PLUGIN_RADIOBROWSER_NONE' ), type => 'text' } ] } )
+		unless length $query;
+
+	_apiGet(
+		'/json/tags/' . _uri($query) . '?order=stationcount&reverse=true&limit=100',
+		sub {
+			my $tags = shift;
 			$cb->( { items => _tagItems( $client, $tags ) } );
 		},
 		sub { $cb->( _errorItems() ) },
