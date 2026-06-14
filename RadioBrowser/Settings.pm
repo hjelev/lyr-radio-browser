@@ -10,6 +10,10 @@ package Plugins::RadioBrowser::Settings;
 #   * cacheTTL        - station-result cache lifetime, in minutes.
 #   * hideBroken      - hide stations failing the last reachability check (on by
 #     default; uncheck to show all stations, including broken/unverified ones).
+#   * recentCount     - how many stations to remember in Recently Played.
+#
+# The 'recent' pref (the history list itself) is plugin-managed state and is
+# deliberately not exposed here.
 # ----------------------------------------------------------------------------
 
 use strict;
@@ -30,7 +34,7 @@ sub page {
 }
 
 sub prefs {
-	return ( $prefs, qw(countryOverride maxResults maxTags cacheTTL hideBroken) );
+	return ( $prefs, qw(countryOverride maxResults maxTags cacheTTL hideBroken recentCount) );
 }
 
 1;

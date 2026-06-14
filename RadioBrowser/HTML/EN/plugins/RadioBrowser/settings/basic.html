@@ -25,6 +25,14 @@
 	</div>
 
 	<div class="settingSubGroup">
+		<div class="prefName">[% "PLUGIN_RADIOBROWSER_SETTINGS_RECENTCOUNT" | string %]</div>
+		<input type="number" min="1" max="1000" step="1"
+		       name="pref_recentCount" id="pref_recentCount"
+		       value="[% prefs.recentCount | html %]" size="8">
+		<div class="prefDesc">[% "PLUGIN_RADIOBROWSER_SETTINGS_RECENTCOUNT_DESC" | string %]</div>
+	</div>
+
+	<div class="settingSubGroup">
 		<div class="prefName">[% "PLUGIN_RADIOBROWSER_SETTINGS_CACHETTL" | string %]</div>
 		<input type="number" min="1" max="10080" step="1"
 		       name="pref_cacheTTL" id="pref_cacheTTL"

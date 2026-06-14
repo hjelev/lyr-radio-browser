@@ -41,6 +41,8 @@ use constant GEO_TTL     => 604800;   # cache detected country for 7 days
 use constant DEFAULT_MAX_RESULTS   => 5000;   # effectively "all"; bounds worst-case size
 use constant DEFAULT_MAX_TAGS      => 1000;   # popular tags shown in browse list
 use constant DEFAULT_CACHE_TTL_MIN => 60;     # cache station result lists for 1 hour
+use constant DEFAULT_RECENT_COUNT  => 100;    # stations remembered in Recently Played
+use constant META_TTL              => 2592000;# 30d: uuid->metadata cache for play-time lookup
 
 # IP-geolocation providers, tried in order until one yields a 2-letter country
 # code. LMS has no built-in country pref, so we infer it from the server's
@@ -80,12 +82,20 @@ sub initPlugin {
 		maxTags         => DEFAULT_MAX_TAGS,
 		cacheTTL        => DEFAULT_CACHE_TTL_MIN,
 		hideBroken      => 1,
+		recentCount     => DEFAULT_RECENT_COUNT,
+		recent          => [],
 	});
 
 	# Keep the numeric prefs sane: positive integers within practical bounds.
 	$prefs->setValidate({ validator => 'intlimit', low => 1, high => 100000 }, 'maxResults');
 	$prefs->setValidate({ validator => 'intlimit', low => 1, high => 10000  }, 'maxTags');
 	$prefs->setValidate({ validator => 'intlimit', low => 1, high => 10080  }, 'cacheTTL');
+	$prefs->setValidate({ validator => 'intlimit', low => 1, high => 1000   }, 'recentCount');
+
+	# Register the radiobrowser:// protocol handler so each play is captured for
+	# the Recently Played list (the OPML item url alone gives us no play callback).
+	require Plugins::RadioBrowser::ProtocolHandler;
+	Slim::Player::ProtocolHandlers->registerHandler('radiobrowser', 'Plugins::RadioBrowser::ProtocolHandler');
 
 	# Pick an API mirror via DNS round-robin (one-time, at startup).
 	$BASE_URL = _resolveBaseUrl();
@@ -260,6 +270,13 @@ sub handleFeed {
 			url   => \&listCountries,
 		},
 	);
+
+	# Recently Played: locally remembered history, surfaced near the top.
+	unshift @items, {
+		name => cstring( $client, 'PLUGIN_RADIOBROWSER_RECENT' ),
+		type => 'link',
+		url  => \&recentStations,
+	};
 
 	# Surface local stations prominently as the very first entry.
 	if ( $code ) {
@@ -497,15 +514,21 @@ sub _stationsToOpml {
 		push @meta, $s->{countrycode}   if $s->{countrycode};
 		my $line2 = join( " \x{00B7} ", @meta );    # space-middot-space separator
 
+		# Remember this station's metadata so the protocol handler can describe
+		# and record it at play time (the play URL only carries the uuid).
+		$cache->set( 'rb_meta:' . $s->{stationuuid}, _recentHash($s), META_TTL );
+
 		push @items, {
 			name      => $s->{name},
 			line1     => $s->{name},
 			line2     => $line2,
 			type      => 'audio',
-			# Click-tracking playlist endpoint -> counts a click and yields the
-			# real stream. Plain string => LMS treats it as a playable track.
+			# Custom scheme handled by ProtocolHandler.pm: it records the play in
+			# the Recently Played list, then resolves to the real stream via the
+			# /json/url/<uuid> click-tracking endpoint (so community click counts
+			# still register). Plain string => LMS treats it as a playable track.
 			# (A code reference here would make LMS render it as a folder.)
-			url       => $BASE_URL . '/m3u/url/' . _uri( $s->{stationuuid} ),
+			url       => 'radiobrowser://' . $s->{stationuuid},
 			# Fall back to the plugin's bundled icon so grid tiles aren't blank
 			# (and drop malformed favicon values that would render broken).
 			image     => ( $s->{favicon} && $s->{favicon} =~ m{^https?://} )
@@ -537,6 +560,124 @@ sub _stationsFeed {
 			windowStyle => 'icon_list',
 		},
 	};
+}
+
+# ----------------------------------------------------------------------------
+# Recently Played
+#
+# A locally stored, server-wide history of the last _recentCount() stations the
+# user actually played. Plays are captured by the radiobrowser:// protocol
+# handler (see ProtocolHandler.pm), which calls recordRecent() at play time.
+# The list lives in the 'recent' pref so it survives server restarts.
+# ----------------------------------------------------------------------------
+
+# Top-level menu handler: render the stored history newest-first, with a Clear
+# action on top. Stored entries are already station-shaped, so they flow back
+# through the same rendering/playback path as every other station list.
+sub recentStations {
+	my ( $client, $cb, $args ) = @_;
+
+	my $list = $prefs->get('recent') || [];
+	@$list = @$list[ 0 .. _recentCount() - 1 ] if @$list > _recentCount();    # truncate on read
+
+	my $items = _stationsToOpml( $client, $list );
+
+	# Offer a Clear action only when there is real history (not the NONE item).
+	if ( @$list ) {
+		unshift @$items, {
+			name => cstring( $client, 'PLUGIN_RADIOBROWSER_CLEAR_RECENT' ),
+			type => 'link',
+			url  => sub {
+				my ( $c, $cb2 ) = @_;
+				$prefs->set( 'recent', [] );
+				recentStations( $c, $cb2 );
+			},
+		};
+	}
+
+	$cb->( {
+		items  => $items,
+		window => { menuStyle => 'album', windowStyle => 'icon_list' },
+	} );
+}
+
+# Push a station (by uuid) onto the front of the recent list: dedupe by uuid so
+# a re-play moves it to the top, then cap at _recentCount(). Called once per
+# play from the protocol handler; the LMS event loop is single-threaded so the
+# read-modify-write needs no locking.
+sub recordRecent {
+	my $uuid = shift or return;
+
+	my $meta = $cache->get( 'rb_meta:' . $uuid ) || { stationuuid => $uuid, name => $uuid };
+
+	my $list = $prefs->get('recent') || [];
+	@$list = grep { ( $_->{stationuuid} || '' ) ne $uuid } @$list;    # dedupe
+	unshift @$list, $meta;                                            # newest first
+
+	my $cap = _recentCount();
+	@$list = @$list[ 0 .. $cap - 1 ] if @$list > $cap;               # cap on write
+
+	$prefs->set( 'recent', $list );
+}
+
+# The real click-tracking endpoint the protocol handler resolves a uuid to.
+# Hitting /json/url/<uuid> registers a community "click" and returns JSON with
+# the live stream url.
+sub clickUrl {
+	my $uuid = shift;
+	return $BASE_URL . '/json/url/' . _uri($uuid);
+}
+
+# Fetch the resolved stream url for a station uuid (async). $cb gets the url
+# string; $ecb gets an error. Used by the protocol handler at play time.
+sub resolveStreamUrl {
+	my ( $uuid, $cb, $ecb ) = @_;
+
+	_apiGet(
+		'/json/url/' . _uri($uuid),
+		sub {
+			my $data = shift;
+			my $url  = ( ref $data eq 'HASH' ) ? $data->{url} : undef;
+			$url ? $cb->($url) : $ecb->('no url in response');
+		},
+		$ecb,
+	);
+}
+
+# Now-playing metadata for a radiobrowser:// track, drawn from the cached
+# station hash seeded in _stationsToOpml. Empty hash when nothing is known.
+sub recentMetaFor {
+	my $uuid = shift;
+	my $m = $cache->get( 'rb_meta:' . $uuid ) or return {};
+
+	return {
+		title   => $m->{name},
+		bitrate => $m->{bitrate} ? $m->{bitrate} * 1000 : undef,
+		cover   => ( $m->{favicon} && $m->{favicon} =~ m{^https?://} )
+		           ? $m->{favicon}
+		           : 'plugins/RadioBrowser/html/images/icon.png',
+	};
+}
+
+# Minimal, YAML-safe station shape stored in the recent list and the uuid cache.
+# lastcheckok is kept so the hideBroken filter in _stationsToOpml still applies.
+sub _recentHash {
+	my $s = shift;
+	return {
+		stationuuid => $s->{stationuuid},
+		name        => $s->{name},
+		bitrate     => $s->{bitrate},
+		codec       => $s->{codec},
+		countrycode => $s->{countrycode},
+		favicon     => $s->{favicon},
+		lastcheckok => $s->{lastcheckok},
+	};
+}
+
+# Max stations remembered in Recently Played (settings-configurable, safe default).
+sub _recentCount {
+	my $n = $prefs->get('recentCount');
+	return ( $n && $n =~ /^\d+$/ && $n > 0 ) ? $n : DEFAULT_RECENT_COUNT;
 }
 
 # ----------------------------------------------------------------------------

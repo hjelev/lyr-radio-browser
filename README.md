@@ -19,6 +19,8 @@ country shown on each station line.
 - **Top Stations** — Most Voted and Most Played.
 - **By Tag / Genre** — drill into the most popular tags.
 - **By Country** — browse every country with stations.
+- **Recently Played** — the last stations you played, newest first
+  (configurable count, persists across restarts).
 - **Station metadata** — bitrate · codec · country shown inline, plus station
   favicons as artwork.
 - **Community-friendly** — honours every Radio Browser API guideline (see below).
@@ -89,6 +91,7 @@ browsing mode:
 | Top Stations      | Most Voted / Most Played, top 100.                        |
 | By Tag / Genre    | Top 200 tags, each drilling into matching stations.       |
 | By Country        | All countries; drill into stations by country code.       |
+| Recently Played   | The last stations you played, newest first; includes a Clear action. |
 
 Select a station to play it. Each play is routed through the Radio Browser
 click-counter so the station's popularity stats stay accurate.
@@ -120,9 +123,10 @@ Tag and country lists are cached for 24 hours to reduce load on the directory.
 
 ```
 RadioBrowser/
-├── install.xml   # Plugin metadata read by LMS at startup (menu=radios, icon)
-├── Plugin.pm     # Core module (extends Slim::Plugin::OPMLBased)
-├── strings.txt   # Localized UI label tokens
+├── install.xml         # Plugin metadata read by LMS at startup (menu=radios, icon)
+├── Plugin.pm           # Core module (extends Slim::Plugin::OPMLBased)
+├── ProtocolHandler.pm  # radiobrowser:// handler: records plays, resolves streams
+├── strings.txt         # Localized UI label tokens
 └── HTML/EN/plugins/RadioBrowser/html/images/icon.png   # Radio-menu icon
 ```
 
@@ -147,7 +151,8 @@ Key subroutines:
 | `topStations`        | Top voted / clicked.                                       |
 | `listTags` / `stationsByTag`        | Tag list and drill-down.                    |
 | `listCountries` / `stationsByCountry` | Country list and drill-down.              |
-| `_stationsToOpml`    | Converts API stations into playable OPML audio items (click-tracking `/m3u/url/` URL). |
+| `recentStations` / `recordRecent` | Recently Played list (rendered / updated on each play). |
+| `_stationsToOpml`    | Converts API stations into playable OPML audio items (`radiobrowser://` URL). |
 
 ---
 

@@ -18,6 +18,12 @@ PLUGIN_RADIOBROWSER_SEARCH_PROMPT
 PLUGIN_RADIOBROWSER_LOCAL
 	EN	Local Stations
 
+PLUGIN_RADIOBROWSER_RECENT
+	EN	Recently Played
+
+PLUGIN_RADIOBROWSER_CLEAR_RECENT
+	EN	Clear recently played
+
 PLUGIN_RADIOBROWSER_TOP
 	EN	Top Stations
 
@@ -59,6 +65,12 @@ PLUGIN_RADIOBROWSER_SETTINGS_MAXTAGS
 
 PLUGIN_RADIOBROWSER_SETTINGS_MAXTAGS_DESC
 	EN	Maximum number of tags shown in the Tags browse list. The Radio Browser directory has ~11 000 tags; higher values show more but may slow down the initial load. Default: 1000.
+
+PLUGIN_RADIOBROWSER_SETTINGS_RECENTCOUNT
+	EN	Recently played count
+
+PLUGIN_RADIOBROWSER_SETTINGS_RECENTCOUNT_DESC
+	EN	How many recently played stations to remember, most recent first. Re-playing a station moves it to the top. Range 1-1000. Default: 100.
 
 PLUGIN_RADIOBROWSER_SETTINGS_CACHETTL
 	EN	Cache lifetime (minutes)
