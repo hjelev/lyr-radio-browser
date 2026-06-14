@@ -48,25 +48,48 @@
   header {
     background: var(--header-grad);
     border-bottom: 1px solid var(--border);
-    padding: 3rem 1.5rem 2.5rem;
-    text-align: center;
+    padding: 3.5rem 1.5rem 3rem;
   }
-  header .logo { display: block; margin: 0 auto .75rem; width: 120px; height: 120px; }
-  header h1 { margin: 0 0 .4rem; font-size: 2.1rem; }
-  header p { margin: 0 auto; max-width: 40rem; color: var(--muted); }
+  .header-inner {
+    max-width: 56rem; margin: 0 auto;
+    display: flex; align-items: flex-start; gap: 1.75rem;
+  }
+  header .logo { flex: none; width: 96px; height: 96px; border-radius: 20px; }
+  .header-text { flex: 1; min-width: 0; }
+  .header-text h1 {
+    margin: 0 0 .35rem; font-size: 2.1rem; line-height: 1.15;
+    letter-spacing: -.02em;
+  }
+  .header-text > p { margin: 0; max-width: 38rem; color: var(--muted); }
+  .header-meta {
+    display: flex; flex-wrap: wrap; align-items: center; gap: .75rem;
+    margin-top: 1.25rem;
+  }
   .badge {
-    display: inline-block; margin-top: 1rem; padding: .25rem .75rem;
+    display: inline-flex; align-items: center; gap: .4rem;
+    padding: .3rem .8rem;
     background: var(--panel-2); border: 1px solid var(--border);
     border-radius: 999px; font-size: .8rem; color: var(--accent-2);
+    font-weight: 600;
+  }
+  .badge::before {
+    content: ""; width: .5rem; height: .5rem; border-radius: 50%;
+    background: var(--accent-2); box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent-2) 25%, transparent);
   }
   .gh-link {
     display: inline-flex; align-items: center; gap: .5rem;
-    margin-top: 1rem; padding: .45rem 1rem;
+    padding: .45rem 1rem;
     background: var(--panel-2); border: 1px solid var(--border);
     border-radius: 8px; color: var(--text); font-weight: 600; font-size: .9rem;
+    transition: border-color .15s, color .15s;
   }
-  .gh-link:hover { border-color: var(--accent); text-decoration: none; }
+  .gh-link:hover { border-color: var(--accent); color: var(--accent); text-decoration: none; }
   .gh-link svg { flex: none; }
+  @media (max-width: 640px) {
+    .header-inner { flex-direction: column; text-align: center; gap: 1.25rem; }
+    .header-text > p { margin: 0 auto; }
+    .header-meta { justify-content: center; }
+  }
   .wrap { max-width: 56rem; margin: 0 auto; padding: 2rem 1.5rem 4rem; }
   nav.toc {
     background: var(--panel); border: 1px solid var(--border);
@@ -121,20 +144,24 @@
 </head>
 <body>
 <header>
-  <img class="logo" src="images/logo.png" alt="Lyrion Radio Browser logo" width="120" height="120">
-  <h1>Lyrion Radio Browser Plugin</h1>
-  <p>Browse and play internet radio from the community-driven
-     <a href="https://www.radio-browser.info/">Radio Browser</a> directory,
-     directly inside Lyrion Music Server.</p>
-  <span class="badge">v1.0.0 &middot; LMS 8.0+</span>
-  <p>
-    <a class="gh-link" href="https://github.com/hjelev/lyr-radio-browser">
-      <svg viewBox="0 0 16 16" width="18" height="18" aria-hidden="true" fill="currentColor">
-        <path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0 0 16 8c0-4.42-3.58-8-8-8z"/>
-      </svg>
-      View on GitHub
-    </a>
-  </p>
+  <div class="header-inner">
+    <img class="logo" src="images/logo.png" alt="Lyrion Radio Browser logo" width="96" height="96">
+    <div class="header-text">
+      <h1>Lyrion Radio Browser Plugin</h1>
+      <p>Browse and play internet radio from the community-driven
+         <a href="https://www.radio-browser.info/">Radio Browser</a> directory,
+         directly inside Lyrion Music Server.</p>
+      <div class="header-meta">
+        <span class="badge">v1.0.0 &middot; LMS 8.0+</span>
+        <a class="gh-link" href="https://github.com/hjelev/lyr-radio-browser">
+          <svg viewBox="0 0 16 16" width="18" height="18" aria-hidden="true" fill="currentColor">
+            <path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0 0 16 8c0-4.42-3.58-8-8-8z"/>
+          </svg>
+          View on GitHub
+        </a>
+      </div>
+    </div>
+  </div>
 </header>
 
 <div class="wrap">

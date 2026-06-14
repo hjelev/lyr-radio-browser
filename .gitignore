@@ -4,3 +4,12 @@ dist/
 # OS / editor cruft
 .DS_Store
 *.swp
+
+# Claude / AI assistant files
+CLAUDE.md
+.claude/
+.claude.json
+CLAUDE.local.md
+
+# Local repository manifest (use repo.xml.example as template)
+repo.xml

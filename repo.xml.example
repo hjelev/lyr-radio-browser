@@ -2,7 +2,11 @@
 <!--
 	Lyrion Music Server third-party repository manifest.
 
-	Users add this file's RAW URL in the LMS web UI under
+	Copy this file to repo.xml and fill in the release details:
+
+		cp repo.xml.example repo.xml
+
+	Users add repo.xml's RAW URL in the LMS web UI under
 	Settings > Plugins > "Additional Repositories":
 
 		https://raw.githubusercontent.com/hjelev/lyr-radio-browser/refs/heads/master/repo.xml
