@@ -547,6 +547,7 @@ sub _stationsFeed {
 sub _uri {
 	my $s = shift;
 	$s = '' unless defined $s;
+	utf8::encode($s);    # convert wide chars to UTF-8 bytes before percent-encoding
 	$s =~ s/([^A-Za-z0-9\-_.~])/sprintf('%%%02X', ord($1))/ge;
 	return $s;
 }
