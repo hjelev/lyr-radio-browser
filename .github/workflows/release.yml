@@ -52,6 +52,17 @@ jobs:
           sed -i "s|<version>[^<]*</version>|<version>${{ steps.ver.outputs.version }}</version>|" \
             RadioBrowser/install.xml
 
+      - name: Sync version into User-Agent
+        run: |
+          # The radio-browser API maintainers require a descriptive User-Agent.
+          # Keep its version segment in lockstep with the release (git tag), so
+          # it never drifts from install.xml/repo.xml. The sed keys off the
+          # literal "lyr-radio-browser/" prefix and the " (https" suffix, so only
+          # the version is touched.
+          sed -i -E "s|(lyr-radio-browser/)[^ ]*( \(https)|\1${{ steps.ver.outputs.version }}\2|" \
+            RadioBrowser/Plugin.pm
+          grep -n "USER_AGENT" RadioBrowser/Plugin.pm
+
       - name: Seed docs/index.html from template
         run: |
           # Always regenerate docs/index.html from the template so content edits
@@ -104,7 +115,7 @@ jobs:
         run: |
           git config user.name  "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add -f repo.xml RadioBrowser/install.xml docs/index.html
+          git add -f repo.xml RadioBrowser/install.xml docs/index.html RadioBrowser/Plugin.pm
           if git diff --cached --quiet; then
             echo "No manifest changes to commit."
           else
