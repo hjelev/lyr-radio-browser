@@ -27,6 +27,8 @@ use Slim::Utils::Strings qw(string cstring);
 use Slim::Utils::Cache;
 use Slim::Utils::Prefs;
 
+use URI::Escape qw(uri_escape_utf8);
+
 # JSON decoder. LMS bundles JSON::XS; we keep a single entry point so all
 # decoding is wrapped in eval for robust error handling.
 use JSON::XS ();
@@ -700,9 +702,7 @@ sub _recentCount {
 sub _uri {
 	my $s = shift;
 	$s = '' unless defined $s;
-	utf8::encode($s);    # convert wide chars to UTF-8 bytes before percent-encoding
-	$s =~ s/([^A-Za-z0-9\-_.~])/sprintf('%%%02X', ord($1))/ge;
-	return $s;
+	return uri_escape_utf8($s);
 }
 
 # Max stations to request per query (settings-configurable, with a safe default).
