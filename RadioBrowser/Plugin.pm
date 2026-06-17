@@ -109,9 +109,10 @@ sub initPlugin {
 	};
 	$log->error("Radio Browser: could not subscribe to playlist commands: $@") if $@;
 
-	# Pick an API mirror via DNS round-robin (one-time, at startup).
-	$BASE_URL = _resolveBaseUrl();
-	$log->info("Radio Browser using base URL: $BASE_URL");
+	# Pick an API mirror via DNS round-robin. Fire-and-forget and fully
+	# non-blocking: $BASE_URL stays at FALLBACK_URL (a working round-robin
+	# endpoint) until the async resolution lands and updates it.
+	_resolveBaseUrlAsync();
 
 	# Web settings page for the manual country override (web UI only).
 	if ( main::WEBUI ) {
@@ -136,43 +137,58 @@ sub getDisplayName { 'PLUGIN_RADIOBROWSER' }
 # ----------------------------------------------------------------------------
 # DNS load balancing (CLAUDE.md sec 3.1) with graceful fallback.
 #
-# Resolve A records for all.api.radio-browser.info, pick one at random, then
-# reverse-resolve it to a real mirror hostname (e.g. de1.api.radio-browser.info)
-# so the HTTPS Host header / TLS SNI stay valid. If Net::DNS is unavailable or
-# anything fails, fall back to the round-robin hostname directly.
+# Asynchronously resolve A records for all.api.radio-browser.info, pick one at
+# random, then reverse-resolve it to a real mirror hostname (e.g.
+# de1.api.radio-browser.info) and pin $BASE_URL to it for the session.
+#
+# This MUST stay non-blocking: LMS runs a single-threaded event loop, so a
+# synchronous DNS lookup at init could stall the whole server (and playback) for
+# seconds (see issue #3). We use AnyEvent::DNS - the same async resolver LMS uses
+# internally via Slim::Networking::Async::DNS - which schedules its own timeouts
+# and retries on the event loop. The LMS wrapper itself is not usable here: it
+# does forward A-resolution only, returns a single address, and has no PTR,
+# whereas we need the full A-record list (to randomize) plus a reverse lookup.
+#
+# Until resolution lands $BASE_URL stays at FALLBACK_URL, which is a fully
+# working round-robin endpoint (the wildcard TLS cert covers both it and the
+# specific mirrors, so the PTR step is for honoring the per-mirror API guidance,
+# not for cert validity). Any failure simply leaves FALLBACK_URL in place.
 # ----------------------------------------------------------------------------
 
-sub _resolveBaseUrl {
-	my $url = eval {
-		require Net::DNS;
+sub _resolveBaseUrlAsync {
+	my $ok = eval {
+		require AnyEvent::DNS;
 
-		my $resolver = Net::DNS::Resolver->new( tcp_timeout => 5, udp_timeout => 5 );
-		my $reply    = $resolver->query( DNS_NAME, 'A' )
-			or die "no A records for " . DNS_NAME . "\n";
+		AnyEvent::DNS::a( DNS_NAME, sub {
+			my @ips = @_;
+			unless ( @ips ) {
+				$log->warn( 'DNS round-robin: no A records for ' . DNS_NAME . "; keeping $BASE_URL" );
+				return;
+			}
 
-		my @ips = map { $_->address } grep { $_->type eq 'A' } $reply->answer;
-		die "empty A record set\n" unless @ips;
+			# Random selection spreads load across mirrors per the API guidelines.
+			my $ip = $ips[ int( rand( scalar @ips ) ) ];
 
-		# Random selection spreads load across mirrors per the API guidelines.
-		my $ip = $ips[ int( rand( scalar @ips ) ) ];
+			# Reverse-resolve so the HTTPS Host header / TLS SNI is a real mirror name.
+			AnyEvent::DNS::reverse_lookup( $ip, sub {
+				my ( $host ) = @_;
+				unless ( $host ) {
+					$log->warn( "DNS round-robin: no PTR for $ip; keeping $BASE_URL" );
+					return;
+				}
 
-		# Reverse-resolve so TLS certificate validation has a matching hostname.
-		my $host;
-		if ( my $ptr = $resolver->query( $ip, 'PTR' ) ) {
-			($host) = map { my $h = $_->ptrdname; $h =~ s/\.$//; $h }
-				grep { $_->type eq 'PTR' } $ptr->answer;
-		}
+				$host =~ s/\.$//;
+				$BASE_URL = "https://$host";
+				$log->info("Radio Browser using base URL: $BASE_URL");
+			} );
+		} );
 
-		die "no PTR for $ip\n" unless $host;
-		return "https://$host";
+		1;
 	};
 
-	if ( $@ || !$url ) {
-		$log->warn( "DNS round-robin unavailable (" . ( $@ || 'unknown' ) . "); falling back to " . FALLBACK_URL );
-		return FALLBACK_URL;
+	if ( !$ok ) {
+		$log->warn( 'DNS round-robin unavailable (' . ( $@ || 'unknown' ) . "); keeping $BASE_URL" );
 	}
-
-	return $url;
 }
 
 # ----------------------------------------------------------------------------
