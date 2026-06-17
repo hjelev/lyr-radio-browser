@@ -58,7 +58,13 @@ PLUGIN_RADIOBROWSER_SETTINGS_MAXRESULTS
 	EN	Maximum stations per list
 
 PLUGIN_RADIOBROWSER_SETTINGS_MAXRESULTS_DESC
-	EN	Maximum number of stations fetched for each list (Search, Top Stations, By Tag, By Country). Higher values show more stations but use more memory. Default: 5000.
+	EN	Maximum number of stations fetched for browse lists (Search, By Tag, By Country). Higher values show more stations but use more memory. Default: 5000.
+
+PLUGIN_RADIOBROWSER_SETTINGS_TOPRESULTS
+	EN	Maximum stations in Top charts
+
+PLUGIN_RADIOBROWSER_SETTINGS_TOPRESULTS_DESC
+	EN	Maximum number of stations fetched for the global Most Voted and Most Played charts. These are "top N" lists, so a small value keeps them fast; large values can make the chart slow to load or fail. Default: 100.
 
 PLUGIN_RADIOBROWSER_SETTINGS_MAXTAGS
 	EN	Maximum tags in list
