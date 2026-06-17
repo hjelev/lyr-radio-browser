@@ -38,23 +38,17 @@ country shown on each station line.
 
 ## Installation
 
-### Recommended: add the repository (one-click install + auto-updates)
+### Recommended: install from the plugin library (one-click + auto-updates)
 
-Install straight from the LMS Plugins screen and get future updates automatically.
+Radio Browser is part of the **official [Lyrion](https://lyrion.org/) plugin
+library**, so it installs straight from the LMS Plugins screen — no repository
+URL needed.
 
 1. Open the LMS web UI and go to **Settings → Plugins**.
-2. Scroll to the bottom to **Additional Repositories** and paste this URL into
-   an empty field:
-
-   ```
-   https://raw.githubusercontent.com/hjelev/lyr-radio-browser/refs/heads/master/repo.xml
-   ```
-
-3. Click **Apply**. LMS reloads the plugin list.
-4. Find **Radio Browser** in the plugin list, tick its checkbox and click
-   **Apply** again.
-5. **Restart Lyrion Music Server** when prompted.
-6. Open the web UI → **Radio**. You should see **Radio Browser** listed.
+2. Find **Radio Browser** in the plugin list, tick its checkbox and click
+   **Apply**.
+3. **Restart Lyrion Music Server** when prompted.
+4. Open the web UI → **Radio**. You should see **Radio Browser** listed.
 
 > When a new version is published, LMS shows an update next to the plugin —
 > no manual download needed.
@@ -192,8 +186,8 @@ The workflow then:
 - rewrites `repo.xml` with the release URL and the zip's **SHA1** and commits
   it back to `master`.
 
-Because the install URL points at `repo.xml` on `master`, LMS picks up the new
-version automatically once the workflow finishes. You can also trigger it
+The official Lyrion plugin library tracks `repo.xml` on `master`, so LMS picks up
+the new version automatically once the workflow finishes. You can also trigger it
 manually from the **Actions** tab (*Release plugin → Run workflow*).
 
 > Building locally: run `./build.sh` to produce `dist/RadioBrowser-<version>.zip`

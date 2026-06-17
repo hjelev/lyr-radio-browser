@@ -7,6 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+- Plugin is now listed in the official Lyrion plugin library — install directly from **Settings → Plugins** with no custom repository URL. Docs updated accordingly.
 - README: plugin logo is now inline with the title and slightly smaller.
 
 ## [v0.2.9] - 2026-06-15
