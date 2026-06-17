@@ -158,7 +158,7 @@
          <a href="https://www.radio-browser.info/">Radio Browser</a> directory,
          directly inside Lyrion Music Server.</p>
       <div class="header-meta">
-        <span class="badge">v<span class="version">0.2.9</span> &middot; LMS 8.0+</span>
+        <span class="badge">v<span class="version">0.2.10</span> &middot; LMS 8.0+</span>
         <a class="gh-link" href="https://github.com/hjelev/lyr-radio-browser">
           <svg viewBox="0 0 16 16" width="18" height="18" aria-hidden="true" fill="currentColor">
             <path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0 0 16 8c0-4.42-3.58-8-8-8z"/>
@@ -214,14 +214,19 @@
   <section id="install">
     <h2>Installation</h2>
 
-    <h3>Recommended: install from the plugin library</h3>
-    <p>Radio Browser is part of the official <a href="https://lyrion.org/">Lyrion</a>
-       plugin library, so it installs straight from the LMS Plugins screen &mdash;
-       no repository URL needed.</p>
+    <h3>Recommended: add the repository</h3>
+    <p>Install from the LMS Plugins screen and get future updates automatically.</p>
     <ol>
       <li>Open the LMS web UI &rarr; <strong>Settings &rarr; Plugins</strong>.</li>
-      <li>Find <strong>Radio Browser</strong> in the plugin list, tick its checkbox
-          and click <strong>Apply</strong>.</li>
+      <li>Scroll to <strong>Additional Repositories</strong> and paste this URL
+          into an empty field:
+        <div class="copybox">
+          <code id="repo-url">https://raw.githubusercontent.com/hjelev/lyr-radio-browser/refs/heads/master/repo.xml</code>
+          <button type="button" class="copy-btn" data-copy-target="repo-url" aria-label="Copy repository URL">Copy</button>
+        </div>
+      </li>
+      <li>Click <strong>Apply</strong>; LMS reloads the plugin list.</li>
+      <li>Tick <strong>Radio Browser</strong> in the list and click <strong>Apply</strong> again.</li>
       <li><strong>Restart Lyrion Music Server</strong> when prompted.</li>
       <li>Open the web UI &rarr; <strong>Radio</strong> &rarr; <strong>Radio Browser</strong>.</li>
     </ol>
@@ -394,7 +399,7 @@
   <a href="https://github.com/hjelev/lyr-radio-browser">GitHub repository</a>
   &middot; Station data provided by the volunteer-run
   <a href="https://www.radio-browser.info/">Radio Browser</a> project.
-  &middot; Lyrion Radio Browser Plugin v<span class="version">0.2.9</span>
+  &middot; Lyrion Radio Browser Plugin v<span class="version">0.2.10</span>
 </footer>
 
 <script>
