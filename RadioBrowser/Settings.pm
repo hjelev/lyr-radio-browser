@@ -34,7 +34,7 @@ sub page {
 }
 
 sub prefs {
-	return ( $prefs, qw(countryOverride maxResults maxTags cacheTTL hideBroken recentCount) );
+	return ( $prefs, qw(countryOverride maxResults topResults maxTags cacheTTL hideBroken recentCount) );
 }
 
 1;

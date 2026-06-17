@@ -41,6 +41,7 @@ use constant GEO_TTL     => 604800;   # cache detected country for 7 days
 # Defaults for the user-configurable station result cap / cache lifetime
 # (overridable via the settings page; see _maxResults / _cacheTTLSecs).
 use constant DEFAULT_MAX_RESULTS   => 5000;   # effectively "all"; bounds worst-case size
+use constant DEFAULT_TOP_RESULTS   => 100;    # global Most Voted/Most Played chart size
 use constant DEFAULT_MAX_TAGS      => 1000;   # popular tags shown in browse list
 use constant DEFAULT_CACHE_TTL_MIN => 60;     # cache station result lists for 1 hour
 use constant DEFAULT_RECENT_COUNT  => 100;    # stations remembered in Recently Played
@@ -86,6 +87,7 @@ sub initPlugin {
 	$prefs->init({
 		countryOverride => '',
 		maxResults      => DEFAULT_MAX_RESULTS,
+		topResults      => DEFAULT_TOP_RESULTS,
 		maxTags         => DEFAULT_MAX_TAGS,
 		cacheTTL        => DEFAULT_CACHE_TTL_MIN,
 		hideBroken      => 1,
@@ -95,6 +97,7 @@ sub initPlugin {
 
 	# Keep the numeric prefs sane: positive integers within practical bounds.
 	$prefs->setValidate({ validator => 'intlimit', low => 1, high => 100000 }, 'maxResults');
+	$prefs->setValidate({ validator => 'intlimit', low => 1, high => 10000  }, 'topResults');
 	$prefs->setValidate({ validator => 'intlimit', low => 1, high => 10000  }, 'maxTags');
 	$prefs->setValidate({ validator => 'intlimit', low => 1, high => 10080  }, 'cacheTTL');
 	$prefs->setValidate({ validator => 'intlimit', low => 1, high => 1000   }, 'recentCount');
@@ -348,7 +351,7 @@ sub topStations {
 	my ( $client, $cb, $args, $pt ) = @_;
 
 	my $order = ( $pt && $pt->{order} ) || 'topvote';
-	my $path  = "/json/stations/$order/" . _maxResults();
+	my $path  = "/json/stations/$order/" . _topResults();
 	$path .= '?hidebroken=true' if _hideBroken();
 
 	_stationsRequest( $client, $cb, $path );
@@ -709,6 +712,14 @@ sub _uri {
 sub _maxResults {
 	my $n = $prefs->get('maxResults');
 	return ( $n && $n =~ /^\d+$/ && $n > 0 ) ? $n : DEFAULT_MAX_RESULTS;
+}
+
+# Max stations to request for the global Most Voted / Most Played charts. These
+# are inherently "top N" lists, so this is kept small by default (settings-
+# configurable): requesting the full directory here just blocks rendering.
+sub _topResults {
+	my $n = $prefs->get('topResults');
+	return ( $n && $n =~ /^\d+$/ && $n > 0 ) ? $n : DEFAULT_TOP_RESULTS;
 }
 
 # Max tags to show in the Tags browse list (settings-configurable, with a safe default).
