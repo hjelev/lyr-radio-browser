@@ -46,8 +46,13 @@ use constant META_TTL              => 2592000;# 30d: uuid->metadata cache for pl
 
 # IP-geolocation providers, tried in order until one yields a 2-letter country
 # code. LMS has no built-in country pref, so we infer it from the server's
-# public IP. Each entry maps the provider's JSON fields to code/name.
+# public IP. Each entry maps the provider's JSON fields to code/name (name is
+# optional - when absent we derive a display name from the code via
+# _countryName). The LMS community service is purpose-built for plugins (no rate
+# limit) so it is tried first; the rate-limited third-party APIs remain as
+# fallbacks should it ever be unavailable.
 use constant GEO_PROVIDERS => (
+	{ url => 'https://api.lms-community.org/geoip/', code => 'country' },
 	{ url => 'https://ipapi.co/json/', code => 'country_code', name => 'country_name' },
 	{ url => 'https://ipwho.is/',      code => 'country_code', name => 'country'      },
 );
@@ -781,7 +786,7 @@ sub _tryGeoProvider {
 			my $code = $data && $data->{ $p->{code} };
 			if ( $code && $code =~ /^[A-Za-z]{2}$/ ) {
 				$code = uc $code;
-				my $name = ( $data->{ $p->{name} } ) || _countryName($code);
+				my $name = ( $p->{name} && $data->{ $p->{name} } ) || _countryName($code);
 				$cache->set( 'radiobrowser_geo', { code => $code, name => $name }, GEO_TTL );
 				$log->info("country auto-detected: $code ($name) via $p->{url}");
 				return;
