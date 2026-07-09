@@ -53,6 +53,8 @@ use constant META_TTL              => 2592000;# 30d: uuid->metadata cache for pl
 # an all-or-nothing timeout. See _stationsRequestPaged.
 use constant STATION_PAGE_SIZE         => 500;  # stations requested per chunk
 use constant STATION_FETCH_BUDGET_SECS => 30;   # wall-clock ceiling across all chunks of one fetch
+use constant STATION_PAGE_PARALLEL     => 4;    # concurrent page requests (bounded: community API)
+use constant STATION_RETRY_LIMIT       => 100;  # smaller retry when the very first chunk fails
 
 # IP-geolocation providers, tried in order until one yields a 2-letter country
 # code. LMS has no built-in country pref, so we infer it from the server's
@@ -430,7 +432,7 @@ sub _tagItems {
 				name        => ucfirst( $_->{name} ) . ' (' . ( $_->{stationcount} || 0 ) . ')',
 				type        => 'link',
 				url         => \&stationsByTag,
-				passthrough => [ { tag => $_->{name} } ],
+				passthrough => [ { tag => $_->{name}, count => $_->{stationcount} } ],
 			}
 		}
 		grep { $_->{name} && ( $_->{stationcount} || 0 ) > 0 }
@@ -446,7 +448,7 @@ sub stationsByTag {
 	my $basePath    = '/json/stations/bytagexact/' . _uri( $tag );
 	my $querySuffix = 'order=name&reverse=false' . _brokenSuffix();
 
-	_stationsRequestPaged( $client, $cb, $basePath, $querySuffix );
+	_stationsRequestPaged( $client, $cb, $basePath, $querySuffix, $pt && $pt->{count} );
 }
 
 # ----------------------------------------------------------------------------
@@ -479,7 +481,7 @@ sub _countryItems {
 				name        => $_->{name} . ' (' . ( $_->{stationcount} || 0 ) . ')',
 				type        => 'link',
 				url         => \&stationsByCountry,
-				passthrough => [ { code => $_->{iso_3166_1} } ],
+				passthrough => [ { code => $_->{iso_3166_1}, count => $_->{stationcount} } ],
 			}
 		}
 		grep { $_->{name} && $_->{iso_3166_1} && ( $_->{stationcount} || 0 ) > 0 }
@@ -500,7 +502,26 @@ sub stationsByCountry {
 	my $basePath    = '/json/stations/bycountrycodeexact/' . _uri( $code );
 	my $querySuffix = 'order=' . _uri( $order ) . '&reverse=' . $reverse . _brokenSuffix();
 
-	_stationsRequestPaged( $client, $cb, $basePath, $querySuffix );
+	# The country browse list passes its count through; the Local/Top-by-country
+	# entries only carry {code, order}, so fall back to the cached countries list.
+	my $count = ( $pt && $pt->{count} ) || _countryStationCount( $code );
+
+	_stationsRequestPaged( $client, $cb, $basePath, $querySuffix, $count );
+}
+
+# Look up a country's station count from the cached countries list (undef when
+# the list isn't cached yet - callers then fall back to the sequential fetch).
+sub _countryStationCount {
+	my $code = shift or return undef;
+
+	my $countries = $cache->get('radiobrowser_countries');
+	return undef unless ref $countries eq 'ARRAY';
+
+	for my $c ( @{ $countries } ) {
+		return $c->{stationcount} if $c->{iso_3166_1} && $c->{iso_3166_1} eq $code;
+	}
+
+	return undef;
 }
 
 # ----------------------------------------------------------------------------
@@ -537,15 +558,27 @@ sub _stationsRequest {
 # A single request for thousands of stations can be slow enough to blow the
 # per-request timeout in _apiGet, and since that request is fully buffered
 # there is nothing partial to recover from it if it does. Instead we fetch in
-# STATION_PAGE_SIZE chunks via limit/offset and accumulate: if a later chunk
-# fails, or the fetch runs past STATION_FETCH_BUDGET_SECS, whatever has been
-# accumulated so far is returned (flagged partial) instead of being discarded.
-# Only a complete fetch (end of data or hit the user's cap) is cached, so a
-# partial result is retried fresh next time rather than stuck for the TTL.
+# STATION_PAGE_SIZE chunks via limit/offset, two strategies:
+#
+#  - When the caller knows the (approximate) total station count - the tag and
+#    country menus display it anyway - all pages are computed up front and
+#    fetched concurrently, STATION_PAGE_PARALLEL at a time, then stitched back
+#    together in order. Failed pages truncate the list at the first gap so
+#    ordering stays contiguous; whatever was retrieved is shown, flagged
+#    partial. A lone page-0 failure is retried once when other pages succeeded.
+#  - Without a count (search), pages are fetched sequentially, accumulating
+#    until end-of-data, the cap, or the STATION_FETCH_BUDGET_SECS budget; a
+#    failure mid-way returns what has accumulated (flagged partial), and a
+#    failure on the very first chunk is retried once with a smaller
+#    STATION_RETRY_LIMIT request before giving up.
+#
+# Only a complete fetch (end of data or hit the user's cap, no failed pages)
+# is cached, so a partial result is retried fresh next time rather than stuck
+# for the TTL.
 # ----------------------------------------------------------------------------
 
 sub _stationsRequestPaged {
-	my ( $client, $cb, $basePath, $querySuffix ) = @_;
+	my ( $client, $cb, $basePath, $querySuffix, $count ) = @_;
 
 	my $cap = _maxResults();
 	my $key = 'rb_stations:' . $basePath . '?' . $querySuffix . '&limit=' . $cap;
@@ -554,16 +587,164 @@ sub _stationsRequestPaged {
 		return $cb->( _stationsFeed( $client, $stations ) );
 	}
 
-	_fetchStationPage( $client, $cb, $basePath, $querySuffix, $cap, $key, [], 0, Time::HiRes::time() );
+	if ( $count && $count > 0 ) {
+		return _fetchStationPagesParallel( $client, $cb, $basePath, $querySuffix, $cap, $key, $count );
+	}
+
+	_fetchStationPage( $client, $cb, $basePath, $querySuffix, $cap, $key, [], 0, Time::HiRes::time(), 0 );
 }
 
+# Parallel path: $count is advisory (the tag/country lists are cached for a
+# day and hidebroken skews the numbers), so short or empty pages just mean the
+# data ended early - that still counts as a complete fetch.
+sub _fetchStationPagesParallel {
+	my ( $client, $cb, $basePath, $querySuffix, $cap, $key, $count ) = @_;
+
+	my $total    = $count < $cap ? $count : $cap;
+	my $numPages = int( ( $total + STATION_PAGE_SIZE - 1 ) / STATION_PAGE_SIZE );
+
+	return _fetchStationPage( $client, $cb, $basePath, $querySuffix, $cap, $key, [], 0, Time::HiRes::time(), 0 )
+		if $numPages < 1;
+
+	$log->info("Parallel station fetch: $numPages pages for $basePath (count=$count, cap=$cap)");
+
+	my $st = {
+		client      => $client,
+		cb          => $cb,
+		basePath    => $basePath,
+		querySuffix => $querySuffix,
+		key         => $key,
+		total       => $total,
+		numPages    => $numPages,
+		nextPage    => 0,
+		pending     => 0,
+		pages       => [],
+		failed      => [],
+		retried0    => 0,
+		done        => 0,
+		startedAt   => Time::HiRes::time(),
+	};
+
+	_launchStationPages($st);
+}
+
+sub _stationPageRequest {
+	my ( $st, $i ) = @_;
+
+	my $offset = $i * STATION_PAGE_SIZE;
+	my $limit  = $st->{total} - $offset;
+	$limit = STATION_PAGE_SIZE if $limit > STATION_PAGE_SIZE;
+
+	my $path = $st->{basePath} . '?' . $st->{querySuffix} . '&limit=' . $limit . '&offset=' . $offset;
+
+	_apiGet(
+		$path,
+		sub {
+			my $data = shift;
+			if ( ref $data eq 'ARRAY' ) {
+				$st->{pages}[$i] = $data;
+			}
+			else {
+				$log->error("Unexpected station response shape for $path");
+				$st->{failed}[$i] = 1;
+			}
+			$st->{pending}--;
+			_launchStationPages($st);
+		},
+		sub {
+			my $error = shift;
+			$log->warn( "Station page $i (offset=$offset) failed for " . $st->{basePath} . ': ' . ( $error || 'error' ) );
+			$st->{failed}[$i] = 1;
+			$st->{pending}--;
+			_launchStationPages($st);
+		},
+	);
+}
+
+# Drainer: keeps up to STATION_PAGE_PARALLEL requests in flight, then hands
+# off to _finishParallel exactly once when everything has settled.
+sub _launchStationPages {
+	my $st = shift;
+
+	while ( $st->{pending} < STATION_PAGE_PARALLEL && $st->{nextPage} < $st->{numPages} ) {
+
+		if ( ( Time::HiRes::time() - $st->{startedAt} ) >= STATION_FETCH_BUDGET_SECS ) {
+			$log->warn( 'Station fetch for ' . $st->{basePath} . ' hit the ' . STATION_FETCH_BUDGET_SECS
+				. 's budget; dropping pages ' . $st->{nextPage} . '..' . ( $st->{numPages} - 1 ) );
+			$st->{failed}[$_] = 1 for $st->{nextPage} .. $st->{numPages} - 1;
+			$st->{nextPage} = $st->{numPages};
+			last;
+		}
+
+		my $i = $st->{nextPage}++;
+		$st->{pending}++;
+		_stationPageRequest( $st, $i );
+	}
+
+	_finishParallel($st) if $st->{pending} == 0 && $st->{nextPage} >= $st->{numPages};
+}
+
+sub _finishParallel {
+	my $st = shift;
+
+	# Page 0 failing alone would leave nothing to show even though the API is
+	# demonstrably up (other pages made it) - give it one more chance.
+	if ( $st->{failed}[0] && !$st->{retried0}
+		&& grep { defined $st->{pages}[$_] } 1 .. $st->{numPages} - 1 ) {
+		$log->warn( 'Retrying failed first page for ' . $st->{basePath} );
+		$st->{retried0}  = 1;
+		$st->{failed}[0] = 0;
+		$st->{pending}   = 1;
+		return _stationPageRequest( $st, 0 );
+	}
+
+	return if $st->{done}++;
+
+	# Keep only the contiguous prefix so an alphabetical list has no holes.
+	my @stations;
+	my $truncated = 0;
+	for my $i ( 0 .. $st->{numPages} - 1 ) {
+		if ( $st->{failed}[$i] ) {
+			$truncated = 1;
+			last;
+		}
+		push @stations, @{ $st->{pages}[$i] || [] };
+	}
+
+	my $anyFailed = grep { $_ } @{ $st->{failed} };
+
+	if ( $anyFailed && !@stations ) {
+		$log->error( 'Station fetch failed entirely for ' . $st->{basePath} );
+		return $st->{cb}->( _errorItems() );
+	}
+
+	if ($anyFailed) {
+		$log->warn( 'Returning partial result of ' . scalar(@stations) . ' stations for ' . $st->{basePath}
+			. ( $truncated ? ' (truncated at first failed page)' : '' ) );
+		return $st->{cb}->( _stationsFeed( $st->{client}, \@stations, 1 ) );
+	}
+
+	$cache->set( $st->{key}, \@stations, _cacheTTLSecs() );
+	$st->{cb}->( _stationsFeed( $st->{client}, \@stations, 0 ) );
+}
+
+# Sequential path (no count known, e.g. search-by-name).
 sub _fetchStationPage {
-	my ( $client, $cb, $basePath, $querySuffix, $cap, $key, $acc, $offset, $startedAt ) = @_;
+	my ( $client, $cb, $basePath, $querySuffix, $cap, $key, $acc, $offset, $startedAt, $retried ) = @_;
 
 	my $chunkLimit = $cap - $offset;
 	$chunkLimit = STATION_PAGE_SIZE if $chunkLimit > STATION_PAGE_SIZE;
+	$chunkLimit = STATION_RETRY_LIMIT if $retried && $offset == 0 && STATION_RETRY_LIMIT < $chunkLimit;
 
 	my $path = $basePath . '?' . $querySuffix . '&limit=' . $chunkLimit . '&offset=' . $offset;
+
+	# One-shot rescue when the very first chunk fails: a smaller request has a
+	# better chance of beating the per-request timeout, and even 100 stations
+	# beats an empty menu. If it fills completely, paging resumes normally.
+	my $retryFirstChunk = sub {
+		$log->warn("First station chunk failed for $basePath; retrying once with limit=" . STATION_RETRY_LIMIT);
+		_fetchStationPage( $client, $cb, $basePath, $querySuffix, $cap, $key, [], 0, $startedAt, 1 );
+	};
 
 	_apiGet(
 		$path,
@@ -572,9 +753,9 @@ sub _fetchStationPage {
 
 			unless ( ref $data eq 'ARRAY' ) {
 				$log->error("Unexpected station response shape for $path");
-				return @$acc
-					? $cb->( _stationsFeed( $client, $acc, 1 ) )
-					: $cb->( _errorItems() );
+				return $cb->( _stationsFeed( $client, $acc, 1 ) ) if @$acc;
+				return $retryFirstChunk->() unless $retried;
+				return $cb->( _errorItems() );
 			}
 
 			push @$acc, @$data;
@@ -594,7 +775,7 @@ sub _fetchStationPage {
 				return $cb->( _stationsFeed( $client, $acc, $complete ? 0 : 1 ) );
 			}
 
-			_fetchStationPage( $client, $cb, $basePath, $querySuffix, $cap, $key, $acc, $offset + $got, $startedAt );
+			_fetchStationPage( $client, $cb, $basePath, $querySuffix, $cap, $key, $acc, $offset + $got, $startedAt, $retried );
 		},
 		sub {
 			my $error = shift;
@@ -603,6 +784,7 @@ sub _fetchStationPage {
 					. ( $error || 'error' ) . '); returning partial result of ' . scalar(@$acc) . ' stations' );
 				return $cb->( _stationsFeed( $client, $acc, 1 ) );
 			}
+			return $retryFirstChunk->() unless $retried;
 			$log->error("Station fetch failed for $path: " . ( $error || 'error' ));
 			$cb->( _errorItems() );
 		},
