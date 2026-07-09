@@ -89,3 +89,15 @@ PLUGIN_RADIOBROWSER_SETTINGS_HIDEBROKEN
 
 PLUGIN_RADIOBROWSER_SETTINGS_HIDEBROKEN_DESC
 	EN	Hide stations that failed Radio Browser's most recent reachability check. Uncheck to show all stations, including unverified or currently-broken ones. Enabled by default.
+
+PLUGIN_RADIOBROWSER_SETTINGS_MENULOCATION
+	EN	Menu location
+
+PLUGIN_RADIOBROWSER_SETTINGS_MENULOCATION_DESC
+	EN	Choose whether Radio Browser appears under the Radio menu or the Apps menu. Requires a Lyrion Music Server restart to take effect.
+
+PLUGIN_RADIOBROWSER_SETTINGS_MENULOCATION_RADIO
+	EN	Radio
+
+PLUGIN_RADIOBROWSER_SETTINGS_MENULOCATION_APPS
+	EN	Apps
