@@ -28,6 +28,7 @@ use Slim::Utils::Cache;
 use Slim::Utils::Prefs;
 
 use URI::Escape qw(uri_escape_utf8);
+use Time::HiRes ();
 
 # JSON decoder. LMS bundles JSON::XS; we keep a single entry point so all
 # decoding is wrapped in eval for robust error handling.
@@ -46,6 +47,12 @@ use constant DEFAULT_MAX_TAGS      => 1000;   # popular tags shown in browse lis
 use constant DEFAULT_CACHE_TTL_MIN => 60;     # cache station result lists for 1 hour
 use constant DEFAULT_RECENT_COUNT  => 100;    # stations remembered in Recently Played
 use constant META_TTL              => 2592000;# 30d: uuid->metadata cache for play-time lookup
+
+# Large station lists (tag/search/country) are fetched in chunks rather than one
+# big request so a slow/huge result set degrades to partial results instead of
+# an all-or-nothing timeout. See _stationsRequestPaged.
+use constant STATION_PAGE_SIZE         => 500;  # stations requested per chunk
+use constant STATION_FETCH_BUDGET_SECS => 30;   # wall-clock ceiling across all chunks of one fetch
 
 # IP-geolocation providers, tried in order until one yields a 2-letter country
 # code. LMS has no built-in country pref, so we infer it from the server's
@@ -342,10 +349,10 @@ sub searchStations {
 	return $cb->( { items => [ { name => cstring( $client, 'PLUGIN_RADIOBROWSER_NONE' ), type => 'text' } ] } )
 		unless length $query;
 
-	my $path = '/json/stations/byname/' . _uri( $query )
-		. '?limit=' . _maxResults() . '&order=name&reverse=false' . _brokenSuffix();
+	my $basePath    = '/json/stations/byname/' . _uri( $query );
+	my $querySuffix = 'order=name&reverse=false' . _brokenSuffix();
 
-	_stationsRequest( $client, $cb, $path );
+	_stationsRequestPaged( $client, $cb, $basePath, $querySuffix );
 }
 
 # ----------------------------------------------------------------------------
@@ -435,11 +442,11 @@ sub _tagItems {
 sub stationsByTag {
 	my ( $client, $cb, $args, $pt ) = @_;
 
-	my $tag  = ( $pt && $pt->{tag} ) || '';
-	my $path = '/json/stations/bytagexact/' . _uri( $tag )
-		. '?limit=' . _maxResults() . '&order=name&reverse=false' . _brokenSuffix();
+	my $tag         = ( $pt && $pt->{tag} ) || '';
+	my $basePath    = '/json/stations/bytagexact/' . _uri( $tag );
+	my $querySuffix = 'order=name&reverse=false' . _brokenSuffix();
 
-	_stationsRequest( $client, $cb, $path );
+	_stationsRequestPaged( $client, $cb, $basePath, $querySuffix );
 }
 
 # ----------------------------------------------------------------------------
@@ -488,12 +495,12 @@ sub stationsByCountry {
 	# Order defaults to alphabetical for the plain browse-by-country menu; callers
 	# request 'votes' or 'clickcount' explicitly for the popularity-branded charts
 	# (Top Voted/Top Clicked/Local · country), which stay sorted descending.
-	my $order   = ( $pt && $pt->{order} ) || 'name';
-	my $reverse = ( $order eq 'name' ) ? 'false' : 'true';
-	my $path = '/json/stations/bycountrycodeexact/' . _uri( $code )
-		. '?limit=' . _maxResults() . '&order=' . _uri( $order ) . '&reverse=' . $reverse . _brokenSuffix();
+	my $order       = ( $pt && $pt->{order} ) || 'name';
+	my $reverse     = ( $order eq 'name' ) ? 'false' : 'true';
+	my $basePath    = '/json/stations/bycountrycodeexact/' . _uri( $code );
+	my $querySuffix = 'order=' . _uri( $order ) . '&reverse=' . $reverse . _brokenSuffix();
 
-	_stationsRequest( $client, $cb, $path );
+	_stationsRequestPaged( $client, $cb, $basePath, $querySuffix );
 }
 
 # ----------------------------------------------------------------------------
@@ -521,6 +528,84 @@ sub _stationsRequest {
 			$cb->( _stationsFeed( $client, $stations ) );
 		},
 		sub { $cb->( _errorItems() ) },
+	);
+}
+
+# ----------------------------------------------------------------------------
+# Paginated station fetch for potentially huge result sets (tag/search/country).
+#
+# A single request for thousands of stations can be slow enough to blow the
+# per-request timeout in _apiGet, and since that request is fully buffered
+# there is nothing partial to recover from it if it does. Instead we fetch in
+# STATION_PAGE_SIZE chunks via limit/offset and accumulate: if a later chunk
+# fails, or the fetch runs past STATION_FETCH_BUDGET_SECS, whatever has been
+# accumulated so far is returned (flagged partial) instead of being discarded.
+# Only a complete fetch (end of data or hit the user's cap) is cached, so a
+# partial result is retried fresh next time rather than stuck for the TTL.
+# ----------------------------------------------------------------------------
+
+sub _stationsRequestPaged {
+	my ( $client, $cb, $basePath, $querySuffix ) = @_;
+
+	my $cap = _maxResults();
+	my $key = 'rb_stations:' . $basePath . '?' . $querySuffix . '&limit=' . $cap;
+
+	if ( my $stations = $cache->get($key) ) {
+		return $cb->( _stationsFeed( $client, $stations ) );
+	}
+
+	_fetchStationPage( $client, $cb, $basePath, $querySuffix, $cap, $key, [], 0, Time::HiRes::time() );
+}
+
+sub _fetchStationPage {
+	my ( $client, $cb, $basePath, $querySuffix, $cap, $key, $acc, $offset, $startedAt ) = @_;
+
+	my $chunkLimit = $cap - $offset;
+	$chunkLimit = STATION_PAGE_SIZE if $chunkLimit > STATION_PAGE_SIZE;
+
+	my $path = $basePath . '?' . $querySuffix . '&limit=' . $chunkLimit . '&offset=' . $offset;
+
+	_apiGet(
+		$path,
+		sub {
+			my $data = shift;
+
+			unless ( ref $data eq 'ARRAY' ) {
+				$log->error("Unexpected station response shape for $path");
+				return @$acc
+					? $cb->( _stationsFeed( $client, $acc, 1 ) )
+					: $cb->( _errorItems() );
+			}
+
+			push @$acc, @$data;
+			my $got = scalar @$data;
+
+			my $complete = $got < $chunkLimit || scalar(@$acc) >= $cap;    # end of data, or hit the cap
+			my $overBudget = ( Time::HiRes::time() - $startedAt ) >= STATION_FETCH_BUDGET_SECS;
+
+			if ( $complete || $overBudget ) {
+				if ($complete) {
+					$cache->set( $key, $acc, _cacheTTLSecs() );
+				}
+				else {
+					$log->warn( "Station fetch for $basePath hit the " . STATION_FETCH_BUDGET_SECS
+						. 's budget with ' . scalar(@$acc) . ' stations; returning partial result' );
+				}
+				return $cb->( _stationsFeed( $client, $acc, $complete ? 0 : 1 ) );
+			}
+
+			_fetchStationPage( $client, $cb, $basePath, $querySuffix, $cap, $key, $acc, $offset + $got, $startedAt );
+		},
+		sub {
+			my $error = shift;
+			if ( @$acc ) {
+				$log->warn( "Station page fetch failed at offset=$offset for $basePath ("
+					. ( $error || 'error' ) . '); returning partial result of ' . scalar(@$acc) . ' stations' );
+				return $cb->( _stationsFeed( $client, $acc, 1 ) );
+			}
+			$log->error("Station fetch failed for $path: " . ( $error || 'error' ));
+			$cb->( _errorItems() );
+		},
 	);
 }
 
@@ -594,10 +679,24 @@ sub _stationsToOpml {
 # ----------------------------------------------------------------------------
 
 sub _stationsFeed {
-	my ( $client, $stations ) = @_;
+	my ( $client, $stations, $partial ) = @_;
+
+	my $items = _stationsToOpml( $client, $stations );
+
+	# Flag a truncated fetch (see _fetchStationPage) so the user knows the list
+	# may be incomplete rather than assuming it's the full result. Carries an
+	# image so grid-capable skins keep rendering large artwork tiles (they fall
+	# back to a plain list as soon as one item lacks artwork).
+	if ( $partial && @$stations ) {
+		unshift @$items, {
+			name  => cstring( $client, 'PLUGIN_RADIOBROWSER_PARTIAL' ),
+			type  => 'text',
+			image => 'plugins/RadioBrowser/html/images/icon.png',
+		};
+	}
 
 	return {
-		items  => _stationsToOpml( $client, $stations ),
+		items  => $items,
 		window => {
 			menuStyle   => 'album',
 			windowStyle => 'icon_list',

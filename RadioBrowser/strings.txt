@@ -48,6 +48,9 @@ PLUGIN_RADIOBROWSER_ERROR
 PLUGIN_RADIOBROWSER_NONE
 	EN	No stations found
 
+PLUGIN_RADIOBROWSER_PARTIAL
+	EN	Showing partial results - the full list could not be loaded in time
+
 PLUGIN_RADIOBROWSER_SETTINGS_COUNTRY
 	EN	Country override
 
