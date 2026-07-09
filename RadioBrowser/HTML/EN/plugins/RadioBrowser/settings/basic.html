@@ -55,6 +55,15 @@
 		       value="1"[% IF prefs.hideBroken %] checked="checked"[% END %]>
 		<div class="prefDesc">[% "PLUGIN_RADIOBROWSER_SETTINGS_HIDEBROKEN_DESC" | string %]</div>
 	</div>
+
+	<div class="settingSubGroup">
+		<div class="prefName">[% "PLUGIN_RADIOBROWSER_SETTINGS_MENULOCATION" | string %]</div>
+		<select name="pref_menuLocation" id="pref_menuLocation">
+			<option value="radios"[% IF prefs.menuLocation != "apps" %] selected="selected"[% END %]>[% "PLUGIN_RADIOBROWSER_SETTINGS_MENULOCATION_RADIO" | string %]</option>
+			<option value="apps"[% IF prefs.menuLocation == "apps" %] selected="selected"[% END %]>[% "PLUGIN_RADIOBROWSER_SETTINGS_MENULOCATION_APPS" | string %]</option>
+		</select>
+		<div class="prefDesc">[% "PLUGIN_RADIOBROWSER_SETTINGS_MENULOCATION_DESC" | string %]</div>
+	</div>
 </div>
 
 [% PROCESS settings/footer.html %]

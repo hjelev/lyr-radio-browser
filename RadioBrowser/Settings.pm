@@ -11,6 +11,8 @@ package Plugins::RadioBrowser::Settings;
 #   * hideBroken      - hide stations failing the last reachability check (on by
 #     default; uncheck to show all stations, including broken/unverified ones).
 #   * recentCount     - how many stations to remember in Recently Played.
+#   * menuLocation    - which top-level menu the plugin appears under (Radio or
+#     Apps). Takes effect on next server restart.
 #
 # The 'recent' pref (the history list itself) is plugin-managed state and is
 # deliberately not exposed here.
@@ -34,7 +36,7 @@ sub page {
 }
 
 sub prefs {
-	return ( $prefs, qw(countryOverride maxResults topResults maxTags cacheTTL hideBroken recentCount) );
+	return ( $prefs, qw(countryOverride maxResults topResults maxTags cacheTTL hideBroken recentCount menuLocation) );
 }
 
 1;

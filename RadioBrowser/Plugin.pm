@@ -92,6 +92,7 @@ sub initPlugin {
 		cacheTTL        => DEFAULT_CACHE_TTL_MIN,
 		hideBroken      => 1,
 		recentCount     => DEFAULT_RECENT_COUNT,
+		menuLocation    => 'radios',
 		recent          => [],
 	});
 
@@ -128,11 +129,15 @@ sub initPlugin {
 	# Auto-detect the listener's country in the background (unless overridden).
 	_maybeDetectCountry();
 
+	# Menu placement (Radio vs Apps) is settings-configurable but only read once
+	# here at init, so a change takes effect on the next server restart.
+	my $under_apps = _menuLocation() eq 'apps';
+
 	$class->SUPER::initPlugin(
 		feed   => \&handleFeed,
 		tag    => 'radiobrowser',
-		menu   => 'radios',        # appear under the LMS "Radio" menu
-		is_app => 0,
+		menu   => $under_apps ? 'apps' : 'radios',
+		is_app => $under_apps ? 1 : 0,
 		weight => 50,
 	);
 }
@@ -740,6 +745,13 @@ sub _hideBroken {
 # to omit broken stations. Empty when the user has chosen to show them.
 sub _brokenSuffix {
 	return _hideBroken() ? '&hidebroken=true' : '';
+}
+
+# Which top-level LMS menu the plugin registers under: 'radios' (default, the
+# Radio menu) or 'apps' (the Apps/My Apps menu). Read once at initPlugin.
+sub _menuLocation {
+	my $v = $prefs->get('menuLocation');
+	return ( defined $v && $v eq 'apps' ) ? 'apps' : 'radios';
 }
 
 # Station-result cache lifetime in seconds (pref stored in minutes).
