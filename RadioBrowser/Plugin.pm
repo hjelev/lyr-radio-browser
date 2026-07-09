@@ -822,11 +822,7 @@ sub _stationsToOpml {
 		push @meta, $s->{countrycode}   if $s->{countrycode};
 		my $line2 = join( " \x{00B7} ", @meta );    # space-middot-space separator
 
-		# Remember this station's metadata, keyed by both uuid and its play URL,
-		# so the playlist-command observer can record it in Recently Played at
-		# play time (the play URL is all we see at that point).
 		my $play_url = $BASE_URL . '/m3u/url/' . _uri( $s->{stationuuid} );
-		$cache->set( 'rb_meta:' . $s->{stationuuid}, _recentHash($s), META_TTL );
 
 		push @items, {
 			name      => $s->{name},
@@ -863,7 +859,13 @@ sub _stationsToOpml {
 sub _stationsFeed {
 	my ( $client, $stations, $partial ) = @_;
 
+	# Feed building runs on the single-threaded event loop, so log how long it
+	# takes: a slow render here stalls the whole server and is otherwise
+	# invisible in the logs (it looks like a client-side timeout).
+	my $t0    = Time::HiRes::time();
 	my $items = _stationsToOpml( $client, $stations );
+	$log->info( sprintf( 'Built feed of %d stations in %.2fs',
+		scalar @{ $stations || [] }, Time::HiRes::time() - $t0 ) );
 
 	# Flag a truncated fetch (see _fetchStationPage) so the user knows the list
 	# may be incomplete rather than assuming it's the full result. Carries an
@@ -946,18 +948,47 @@ sub recentStations {
 	} );
 }
 
-# Push a station (by uuid) onto the front of the recent list: dedupe by uuid so
-# a re-play moves it to the top, then cap at _recentCount(). Called from the
-# playlist-command observer; the LMS event loop is single-threaded so the
-# read-modify-write needs no locking.
+# Record a play (by uuid) in the recent list. Metadata is resolved lazily at
+# play time: from the rb_meta cache when this station was played before,
+# otherwise via one async /json/stations/byuuid lookup. (It used to be
+# pre-cached for every station at browse time, but 5000 synchronous cache
+# writes per menu render stalled the whole event loop on slow storage.)
 sub recordRecent {
 	my $uuid = shift or return;
 
-	my $meta = $cache->get( 'rb_meta:' . $uuid ) || { stationuuid => $uuid, name => $uuid };
+	if ( my $meta = $cache->get( 'rb_meta:' . $uuid ) ) {
+		return _pushRecent($meta);
+	}
+
+	_apiGet(
+		'/json/stations/byuuid/' . _uri($uuid),
+		sub {
+			my $data = shift;
+			my $s = ( ref $data eq 'ARRAY' ) ? $data->[0] : undef;
+
+			my $meta = ( $s && $s->{stationuuid} )
+				? _recentHash($s)
+				: { stationuuid => $uuid, name => $uuid };
+
+			$cache->set( 'rb_meta:' . $uuid, $meta, META_TTL );
+			_pushRecent($meta);
+		},
+		sub {
+			# Record the play anyway; the uuid-only entry is better than losing it.
+			_pushRecent( { stationuuid => $uuid, name => $uuid } );
+		},
+	);
+}
+
+# Push a station entry onto the front of the recent list: dedupe by uuid so a
+# re-play moves it to the top, then cap at _recentCount(). The LMS event loop
+# is single-threaded so the read-modify-write needs no locking.
+sub _pushRecent {
+	my $meta = shift or return;
 
 	my $list = $prefs->get('recent') || [];
-	@$list = grep { ( $_->{stationuuid} || '' ) ne $uuid } @$list;    # dedupe
-	unshift @$list, $meta;                                            # newest first
+	@$list = grep { ( $_->{stationuuid} || '' ) ne $meta->{stationuuid} } @$list;    # dedupe
+	unshift @$list, $meta;                                                           # newest first
 
 	my $cap = _recentCount();
 	@$list = @$list[ 0 .. $cap - 1 ] if @$list > $cap;               # cap on write
