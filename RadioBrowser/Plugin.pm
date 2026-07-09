@@ -343,7 +343,7 @@ sub searchStations {
 		unless length $query;
 
 	my $path = '/json/stations/byname/' . _uri( $query )
-		. '?limit=' . _maxResults() . '&order=votes&reverse=true' . _brokenSuffix();
+		. '?limit=' . _maxResults() . '&order=name&reverse=false' . _brokenSuffix();
 
 	_stationsRequest( $client, $cb, $path );
 }
@@ -437,7 +437,7 @@ sub stationsByTag {
 
 	my $tag  = ( $pt && $pt->{tag} ) || '';
 	my $path = '/json/stations/bytagexact/' . _uri( $tag )
-		. '?limit=' . _maxResults() . '&order=votes&reverse=true' . _brokenSuffix();
+		. '?limit=' . _maxResults() . '&order=name&reverse=false' . _brokenSuffix();
 
 	_stationsRequest( $client, $cb, $path );
 }
@@ -485,10 +485,13 @@ sub stationsByCountry {
 	my ( $client, $cb, $args, $pt ) = @_;
 
 	my $code  = ( $pt && $pt->{code} )  || '';
-	# Order defaults to votes; callers can request 'clickcount' for "most played".
-	my $order = ( $pt && $pt->{order} ) || 'votes';
+	# Order defaults to alphabetical for the plain browse-by-country menu; callers
+	# request 'votes' or 'clickcount' explicitly for the popularity-branded charts
+	# (Top Voted/Top Clicked/Local · country), which stay sorted descending.
+	my $order   = ( $pt && $pt->{order} ) || 'name';
+	my $reverse = ( $order eq 'name' ) ? 'false' : 'true';
 	my $path = '/json/stations/bycountrycodeexact/' . _uri( $code )
-		. '?limit=' . _maxResults() . '&order=' . _uri( $order ) . '&reverse=true' . _brokenSuffix();
+		. '?limit=' . _maxResults() . '&order=' . _uri( $order ) . '&reverse=' . $reverse . _brokenSuffix();
 
 	_stationsRequest( $client, $cb, $path );
 }
