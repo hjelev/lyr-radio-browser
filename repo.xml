@@ -4,15 +4,15 @@
 		<title lang="EN">Radio Browser (hjelev)</title>
 	</details>
 	<plugins>
-		<plugin name="RadioBrowser" version="0.3.1" minTarget="8.0" maxTarget="9.*">
+		<plugin name="RadioBrowser" version="0.3.2" minTarget="8.0" maxTarget="9.*">
 			<title lang="EN">Radio Browser</title>
 			<desc lang="EN">Browse and play internet radio stations from the community-driven Radio Browser directory (api.radio-browser.info). Search, top stations, by tag/genre and by country.</desc>
 			<creator>hjelev</creator>
 			<email>jeleff@gmail.com</email>
 			<category>radio</category>
 			<link>https://masoko.net/lyr-radio-browser/</link>
-			<url>https://github.com/hjelev/lyr-radio-browser/releases/download/v0.3.1/RadioBrowser-0.3.1.zip</url>
-			<sha>4f401667356ad6eea55c5e273c46dfd728bccd4d</sha>
+			<url>https://github.com/hjelev/lyr-radio-browser/releases/download/v0.3.2/RadioBrowser-0.3.2.zip</url>
+			<sha>ca9f149c22d47db1999a03c1c4e60c0bc82f862b</sha>
 		</plugin>
 	</plugins>
 </extensions>

@@ -33,7 +33,7 @@ use URI::Escape qw(uri_escape_utf8);
 # decoding is wrapped in eval for robust error handling.
 use JSON::XS ();
 
-use constant USER_AGENT  => 'lyr-radio-browser/0.3.1 (https://github.com/hjelev/lyr-radio-browser)';
+use constant USER_AGENT  => 'lyr-radio-browser/0.3.2 (https://github.com/hjelev/lyr-radio-browser)';
 use constant DNS_NAME    => 'all.api.radio-browser.info';
 use constant FALLBACK_URL => 'https://all.api.radio-browser.info';
 use constant LIST_TTL    => 86400;    # cache tags/countries for 1 day
