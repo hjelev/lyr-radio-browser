@@ -105,11 +105,12 @@ strictly:
    `User-Agent: LyrionRadioBrowserPlugin/1.0`.
 3. **UUIDs only.** Stations are identified solely by `stationuuid`.
 4. **Click tracking.** Each station's playable URL is the station's own
-   stream address (tagged with a `#rb-<uuid>` fragment LMS strips before
-   connecting), not Radio Browser's `/m3u/url/<uuid>` click-tracking redirect
-   - that endpoint's M3U always reports a bogus 1-second duration, which made
-   Now Playing show a perpetual "0:01 / 0:01". The click is instead registered
-   with a background `/json/url/<uuid>` call once playback starts.
+   stream address, used unmodified, not Radio Browser's `/m3u/url/<uuid>`
+   click-tracking redirect - that endpoint's M3U always reports a bogus
+   1-second duration, which made Now Playing show a perpetual "0:01 / 0:01".
+   The station uuid is recovered at play time from a `stream URL -> uuid`
+   cache entry recorded when the station was listed, and the click is
+   registered with a background `/json/url/<uuid>` call once playback starts.
 
 Tag and country lists are cached for 24 hours to reduce load on the directory.
 
@@ -148,7 +149,7 @@ Key subroutines:
 | `listCountries` / `stationsByCountry` | Country list and drill-down.              |
 | `recentStations` / `recordRecent` | Recently Played list (rendered / updated on each play). |
 | `_onPlaylistCmd`     | Observes playlist commands to capture plays for Recently Played and ping the click-count endpoint. |
-| `_stationsToOpml`    | Converts API stations into playable OPML audio items (direct stream URL tagged with a `#rb-<uuid>` fragment). |
+| `_stationsToOpml`    | Converts API stations into playable OPML audio items (direct, unmodified stream URL; caches a uuid lookup entry for it). |
 
 ---
 
