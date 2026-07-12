@@ -864,7 +864,13 @@ sub _stationsToOpml {
 			image     => ( $s->{favicon} && $s->{favicon} =~ m{^https?://} )
 			             ? $s->{favicon}
 			             : 'plugins/RadioBrowser/html/images/icon.png',
-			bitrate   => $s->{bitrate} ? $s->{bitrate} * 1000 : undef,
+			# kbps, NOT bps: setRemoteMetadata() multiplies by 1000 itself.
+			# Must be non-zero: with no track bitrate, LMS's elapsed-time
+			# estimation (StreamingController::playingSongElapsed) gets a
+			# byterate of 0 and falls back to "now - remoteStreamStartTime",
+			# which renders as a huge epoch-sized elapsed time (~495k hours)
+			# on live radio in sync/rebuffer states.
+			bitrate   => $s->{bitrate} || 128,
 			on_select => 'play',    # explicit play-on-select hint
 			playall   => 1,
 		};
