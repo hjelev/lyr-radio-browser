@@ -794,10 +794,27 @@ sub _fetchStationPage {
 # ----------------------------------------------------------------------------
 # Convert a Radio Browser station array into OPML audio items.
 #
-# Each station is a directly playable stream. Its url points at the Radio
-# Browser click-tracking playlist endpoint /m3u/url/<uuid>: when the player
-# fetches it the API registers a "click" and returns an M3U (Content-Type
-# audio/mpegurl) containing the live stream, which LMS resolves and plays.
+# Each station is a directly playable stream. Its url is the station's own
+# stream address (url_resolved, falling back to url), tagged with a
+# '#rb-<uuid>' fragment.
+#
+# We used to point url at Radio Browser's click-tracking playlist endpoint
+# /m3u/url/<uuid> instead. That endpoint's M3U always sets #EXTINF:1 (a
+# literal 1-second duration, not the standard -1 "unknown/live" convention),
+# which LMS took at face value: Now Playing showed a perpetual "0:01 / 0:01"
+# and, because the track LMS actually plays is the *resolved inner* stream
+# URL rather than our OPML item's URL, the bitrate/line2 metadata below never
+# reached the track LMS displays. Streaming directly from the station's own
+# URL avoids the M3U hop (and its bogus duration) entirely, and makes the
+# metadata below apply to the exact URL LMS plays. The click-count side
+# effect of hitting /m3u/url/<uuid> is preserved separately via an explicit
+# /json/url/<uuid> ping in _onPlaylistCmd.
+#
+# The '#rb-<uuid>' fragment is stripped by LMS/squeezelite before the real
+# connection is opened (the same mechanism the classic "streamurl#Title"
+# convention relies on), so it never reaches the stream server - it only
+# stays visible in the played-URL string LMS reports back to _onPlaylistCmd,
+# which is how the uuid is recovered to log a Recently Played entry.
 #
 # IMPORTANT: url must be a plain STRING for the item to appear as a playable
 # stream. A code reference here would make LMS render the station as a
@@ -816,24 +833,27 @@ sub _stationsToOpml {
 		next unless $s->{stationuuid} && $s->{name};
 		next if _hideBroken() && defined $s->{lastcheckok} && $s->{lastcheckok} == 0;    # skip broken
 
+		my $stream_url = $s->{url_resolved} || $s->{url};
+		next unless $stream_url;    # nothing playable
+
 		my @meta;
 		push @meta, $s->{bitrate} . 'k' if $s->{bitrate};
 		push @meta, uc $s->{codec}      if $s->{codec};
 		push @meta, $s->{countrycode}   if $s->{countrycode};
 		my $line2 = join( " \x{00B7} ", @meta );    # space-middot-space separator
 
-		my $play_url = $BASE_URL . '/m3u/url/' . _uri( $s->{stationuuid} );
+		$stream_url =~ s/#.*$//;    # drop any pre-existing fragment before adding ours
+		my $play_url = $stream_url . '#rb-' . $s->{stationuuid};
 
 		push @items, {
 			name      => $s->{name},
 			line1     => $s->{name},
 			line2     => $line2,
 			type      => 'audio',
-			# Click-tracking playlist endpoint -> counts a click and yields the
-			# real stream. Plain string => LMS treats it as a playable track.
-			# (A code reference here would make LMS render it as a folder.)
+			# Direct stream URL, tagged with a '#rb-<uuid>' fragment (stripped
+			# before LMS opens the real connection; see comment above).
 			# Plays are captured separately via a playlist-command observer that
-			# matches this URL back to the station uuid (see _onPlaylistCmd).
+			# matches this fragment back to the station uuid (see _onPlaylistCmd).
 			url       => $play_url,
 			# Fall back to the plugin's bundled icon so grid tiles aren't blank
 			# (and drop malformed favicon values that would render broken).
@@ -893,14 +913,18 @@ sub _stationsFeed {
 #
 # A locally stored, server-wide history of the last _recentCount() stations the
 # user actually played. Plays are captured passively by _onPlaylistCmd, which
-# observes playlist commands and matches the played /m3u/url/<uuid> URL back to
-# a station. The list lives in the 'recent' pref so it survives server restarts.
+# observes playlist commands and matches the played URL's '#rb-<uuid>' fragment
+# back to a station. The list lives in the 'recent' pref so it survives server
+# restarts.
 # ----------------------------------------------------------------------------
 
 # Observer for playlist play/load/add/insert commands. Pulls the played URL from
-# the request, recovers the station uuid from our /m3u/url/<uuid> endpoint, and
-# records it. Passive: it never changes playback, and never dies (a failure here
-# must not disrupt the user's play action).
+# the request, recovers the station uuid from its '#rb-<uuid>' fragment, records
+# a Recently Played entry, and pings Radio Browser's click-count endpoint (the
+# stream URL no longer routes through /m3u/url/<uuid>, so that side effect has
+# to be triggered explicitly - see _stationsToOpml). Passive: it never changes
+# playback, and never dies (a failure here must not disrupt the user's play
+# action).
 sub _onPlaylistCmd {
 	my $request = shift;
 	return unless $request;
@@ -908,8 +932,10 @@ sub _onPlaylistCmd {
 	eval {
 		# For playlist play/load/add/insert the played URL is the '_item' param.
 		my $url = $request->getParam('_item');
-		if ( defined $url && $url =~ m{/m3u/url/([0-9A-Za-z._~%-]+)} ) {
-			recordRecent($1);
+		if ( defined $url && $url =~ m{#rb-([0-9A-Za-z._~%-]+)$} ) {
+			my $uuid = $1;
+			recordRecent($uuid);
+			_apiGet( '/json/url/' . _uri($uuid), sub {}, sub {} );    # fire-and-forget click count
 		}
 	};
 	$log->debug("Radio Browser: recent-capture error: $@") if $@;

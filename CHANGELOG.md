@@ -7,6 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+- Fixed the elapsed-time display getting stuck at "0:01 / 0:01" and bitrate/codec info never showing while a station played: stations were streamed through Radio Browser's `/m3u/url/<uuid>` click-tracking redirect, whose M3U always reports a bogus 1-second track duration. Stations now stream directly from their own URL (click tracking is preserved via a background `/json/url/<uuid>` call once playback starts).
 - Huge station lists (tags/countries with thousands of stations) now load much faster: when the station count is known, pages are fetched concurrently (4 at a time) instead of one after another, cutting a 5 000-station fetch from ~10 round-trips to ~3.
 - Failed or slow fetches no longer end in an empty list: whatever was retrieved is shown (flagged as a partial result), a failed first page is retried once, and search falls back to a smaller retry request before giving up.
 - Plugin is now listed in the official Lyrion plugin library — install directly from **Settings → Plugins** with no custom repository URL. Docs updated accordingly.
