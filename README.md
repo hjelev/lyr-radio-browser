@@ -87,8 +87,8 @@ browsing mode:
 | By Country        | All countries; drill into stations by country code.       |
 | Recently Played   | The last stations you played, newest first; includes a Clear action. |
 
-Select a station to play it. Each play is routed through the Radio Browser
-click-counter so the station's popularity stats stay accurate.
+Select a station to play it. Each play pings the Radio Browser click-counter
+in the background so the station's popularity stats stay accurate.
 
 ---
 
@@ -104,10 +104,12 @@ strictly:
 2. **Descriptive User-Agent.** Every request sends
    `User-Agent: LyrionRadioBrowserPlugin/1.0`.
 3. **UUIDs only.** Stations are identified solely by `stationuuid`.
-4. **Click tracking.** Each station's playable URL is the click-tracking
-   playlist endpoint `/m3u/url/<uuid>`. When the player opens it the API
-   registers a click and returns an M3U pointing at the live stream, which LMS
-   resolves and plays.
+4. **Click tracking.** Each station's playable URL is the station's own
+   stream address (tagged with a `#rb-<uuid>` fragment LMS strips before
+   connecting), not Radio Browser's `/m3u/url/<uuid>` click-tracking redirect
+   - that endpoint's M3U always reports a bogus 1-second duration, which made
+   Now Playing show a perpetual "0:01 / 0:01". The click is instead registered
+   with a background `/json/url/<uuid>` call once playback starts.
 
 Tag and country lists are cached for 24 hours to reduce load on the directory.
 
@@ -145,8 +147,8 @@ Key subroutines:
 | `listTags` / `stationsByTag`        | Tag list and drill-down.                    |
 | `listCountries` / `stationsByCountry` | Country list and drill-down.              |
 | `recentStations` / `recordRecent` | Recently Played list (rendered / updated on each play). |
-| `_onPlaylistCmd`     | Observes playlist commands to capture plays for Recently Played. |
-| `_stationsToOpml`    | Converts API stations into playable OPML audio items (click-tracking `/m3u/url/` URL). |
+| `_onPlaylistCmd`     | Observes playlist commands to capture plays for Recently Played and ping the click-count endpoint. |
+| `_stationsToOpml`    | Converts API stations into playable OPML audio items (direct stream URL tagged with a `#rb-<uuid>` fragment). |
 
 ---
 
