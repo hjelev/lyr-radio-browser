@@ -863,7 +863,7 @@ sub _stationsToOpml {
 			# (and drop malformed favicon values that would render broken).
 			image     => ( $s->{favicon} && $s->{favicon} =~ m{^https?://} )
 			             ? $s->{favicon}
-			             : 'plugins/RadioBrowser/html/images/icon.png',
+			             : 'plugins/RadioBrowser/html/images/RadioBrowser_svg.png',
 			# kbps, NOT bps: setRemoteMetadata() multiplies by 1000 itself.
 			# Must be non-zero: with no track bitrate, LMS's elapsed-time
 			# estimation (StreamingController::playingSongElapsed) gets a
@@ -905,7 +905,7 @@ sub _stationsFeed {
 		unshift @$items, {
 			name  => cstring( $client, 'PLUGIN_RADIOBROWSER_PARTIAL' ),
 			type  => 'text',
-			image => 'plugins/RadioBrowser/html/images/icon.png',
+			image => 'plugins/RadioBrowser/html/images/RadioBrowser_svg.png',
 		};
 	}
 
@@ -968,7 +968,7 @@ sub recentStations {
 		unshift @$items, {
 			name  => cstring( $client, 'PLUGIN_RADIOBROWSER_CLEAR_RECENT' ),
 			type  => 'link',
-			image => 'plugins/RadioBrowser/html/images/icon.png',
+			image => 'plugins/RadioBrowser/html/images/RadioBrowser_svg.png',
 			url   => sub {
 				my ( $c, $cb2 ) = @_;
 				$prefs->set( 'recent', [] );

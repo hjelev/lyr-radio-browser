@@ -13,7 +13,7 @@
 	<email>jeleff@gmail.com</email>
 	<module>Plugins::RadioBrowser::Plugin</module>
 	<desc lang="EN">Browse and play internet radio stations from the community-driven Radio Browser directory (api.radio-browser.info).</desc>
-	<icon>plugins/RadioBrowser/html/images/icon.png</icon>
+	<icon>plugins/RadioBrowser/html/images/RadioBrowser_svg.png</icon>
 	<!--
 		<link> drives the "More Info" link in the pre-install repository view
 		(via repo.xml). Once installed, LMS reads <homepageURL> instead, so we
