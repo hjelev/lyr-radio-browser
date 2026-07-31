@@ -1167,6 +1167,8 @@ sub _tryGeoProvider {
 		return;
 	}
 
+	my %apiHeaders = Slim::Utils::Misc->can('apiHeaders') ? Slim::Utils::Misc::apiHeaders(__PACKAGE__) : ('X-LMS-Plugin-ID' => __PACKAGE__);
+
 	Slim::Networking::SimpleAsyncHTTP->new(
 		sub {
 			my $http = shift;
@@ -1190,7 +1192,7 @@ sub _tryGeoProvider {
 			_tryGeoProvider($providers);
 		},
 		{ timeout => 10 },
-	)->get( $p->{url}, 'User-Agent' => USER_AGENT );
+	)->get( $p->{url}, 'User-Agent' => USER_AGENT, %apiHeaders );
 }
 
 1;
